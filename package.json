@@ -1,0 +1,55 @@
+{
+  "name": "mcp-yandex-wordstat",
+  "version": "1.0.0",
+  "description": "MCP server for the Yandex Wordstat API — search-demand statistics (top & related queries, time dynamics, regional distribution) for AI agents. Works with both Yandex Cloud Search API v2 and api.wordstat.yandex.net.",
+  "mcpName": "io.github.askads/mcp-yandex-wordstat",
+  "type": "module",
+  "bin": {
+    "mcp-yandex-wordstat": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "smoke": "node --import tsx src/smoke.ts",
+    "test": "node --import tsx --test $(find src -name '*.test.ts')",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "yandex",
+    "yandex-wordstat",
+    "wordstat",
+    "keyword-research",
+    "seo",
+    "search-demand"
+  ],
+  "license": "MIT",
+  "author": "Aleksandr Kovalko",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/askads/mcp-yandex-wordstat.git"
+  },
+  "homepage": "https://github.com/askads/mcp-yandex-wordstat#readme",
+  "bugs": {
+    "url": "https://github.com/askads/mcp-yandex-wordstat/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.0"
+  }
+}
