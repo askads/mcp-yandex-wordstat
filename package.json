@@ -1,6 +1,6 @@
 {
   "name": "mcp-yandex-wordstat",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for the Yandex Wordstat API — search-demand statistics (top & related queries, time dynamics, regional distribution) for AI agents. Works with both Yandex Cloud Search API v2 and api.wordstat.yandex.net.",
   "mcpName": "io.github.askads/mcp-yandex-wordstat",
   "type": "module",
