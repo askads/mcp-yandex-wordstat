@@ -65,8 +65,15 @@ Keep the version in sync across **all** channels in one go — publishing to npm
 drifts from the rest (`git push --follow-tags` pushes the tag but does **not** create a GitHub
 Release; the registry is immutable per version, so even a metadata-only change needs a bump):
 
-1. Bump `version` in `package.json` **and** `server.json` (root + `packages[].version`)
-   together. `mcpName` in `package.json` must match `name` in `server.json`.
+1. Bump `version` in **three places, identically**: `package.json`, and in `server.json`
+   **both** the root `version` **and** `packages[0].version`. `mcpName` in `package.json` must
+   match `name` in `server.json`. Verify before publishing — all three must print the same X.Y.Z:
+   `grep -n '"version"' package.json server.json`.
+   > ⚠️ `mcp-publisher` publishes the **root** `server.json.version`. If you bump npm +
+   > `packages[0].version` but leave the root stale, `npm publish` still succeeds (it reads
+   > `package.json`), yet `mcp-publisher publish` fails with a misleading
+   > `400 cannot publish duplicate version` — it is re-publishing the old root version. (Bit us on
+   > the 2.0.0 release: root was left at 1.0.1 while everything else was 2.0.0.)
 2. `npm publish` (runs typecheck + tests + build via `prepublishOnly` / `prepare`).
 3. `git commit`, `git tag -a vX.Y.Z -m vX.Y.Z`, `git push origin main --follow-tags`.
 4. **GitHub Release:** `gh release create vX.Y.Z --title vX.Y.Z --generate-notes --verify-tag`.
