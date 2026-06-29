@@ -46,7 +46,7 @@ test("regions forwards regionMode; list_regions calls regionsTree", async () => 
   await tools.regions({ phrase: "кофе", regionMode: "cities" });
   await tools.list_regions({});
   assert.equal(calls[0].method, "regions");
-  assert.deepEqual(calls[0].params, { phrase: "кофе", regionMode: "cities", devices: undefined });
+  assert.deepEqual(calls[0].params, { phrase: "кофе", regionMode: "cities" });
   assert.equal(calls[1].method, "regionsTree");
 });
 

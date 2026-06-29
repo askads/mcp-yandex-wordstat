@@ -31,7 +31,7 @@ async function main(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`mcp-yandex-wordstat running on stdio (flavor: ${config.flavor})`);
+  console.error("mcp-yandex-wordstat running on stdio");
 }
 
 main().catch((err) => {

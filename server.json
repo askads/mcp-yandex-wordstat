@@ -14,33 +14,21 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcp-yandex-wordstat",
-      "version": "1.0.1",
+      "version": "2.0.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
-          "name": "WORDSTAT_FLAVOR",
-          "description": "Which Wordstat API to use: \"cloud\" (Yandex Cloud Search API v2, default) or \"oauth\" (api.wordstat.yandex.net).",
-          "isRequired": false,
-          "default": "cloud"
-        },
-        {
           "name": "WORDSTAT_API_KEY",
-          "description": "Yandex Cloud API key (Search API). Required when WORDSTAT_FLAVOR=cloud. Treat it as a secret.",
-          "isRequired": false,
+          "description": "Yandex Cloud API key for the Search API (sent as Api-Key). Treat it as a secret.",
+          "isRequired": true,
           "isSecret": true
         },
         {
           "name": "WORDSTAT_FOLDER_ID",
-          "description": "Yandex Cloud folder id, injected into every request. Required when WORDSTAT_FLAVOR=cloud.",
-          "isRequired": false
-        },
-        {
-          "name": "WORDSTAT_TOKEN",
-          "description": "Yandex OAuth token for api.wordstat.yandex.net. Required when WORDSTAT_FLAVOR=oauth. Treat it as a secret.",
-          "isRequired": false,
-          "isSecret": true
+          "description": "Yandex Cloud folder id, injected into every request body.",
+          "isRequired": true
         },
         {
           "name": "WORDSTAT_LANG",

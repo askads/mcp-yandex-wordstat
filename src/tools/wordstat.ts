@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { WordstatClient } from "../client.js";
 import { deviceEnum, fail, ok, READ_ONLY } from "./util.js";
 
-/** Region ids accept numbers or numeric strings; the client coerces per flavor. */
+/** Region ids accept numbers or numeric strings; the client coerces them for the API. */
 const regionIds = z
   .array(z.union([z.number().int(), z.string()]))
   .optional()
@@ -21,7 +21,7 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
       title: "Top & related queries",
       annotations: READ_ONLY,
       description:
-        "Returns search-demand for a phrase over the last 30 days: the most popular queries that CONTAIN the phrase (results/topRequests) and semantically RELATED queries that may not contain it (associations), plus totalCount. Use it to discover keywords and gauge demand. Counts can arrive as strings (int64). Optional regionIds and devices narrow the result; numPhrases (cloud flavor) sets how many to return (1..2000).",
+        "Returns search-demand for a phrase over the last 30 days: the most popular queries that CONTAIN the phrase (results) and semantically RELATED queries that may not contain it (associations), plus totalCount. Use it to discover keywords and gauge demand. Counts can arrive as strings (int64). Optional regionIds and devices narrow the result; numPhrases sets how many to return (1..2000).",
       inputSchema: {
         phrase: z.string().min(1).describe("The search phrase to research, e.g. «купить велосипед»."),
         regionIds,
@@ -32,7 +32,7 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
           .min(1)
           .max(2000)
           .optional()
-          .describe("How many top phrases to return (cloud flavor only; default 20). Ignored on the oauth flavor."),
+          .describe("How many top phrases to return (1..2000; default 20)."),
       },
     },
     async ({ phrase, regionIds, devices, numPhrases }) => {
@@ -50,15 +50,15 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
       title: "Demand dynamics over time",
       annotations: READ_ONLY,
       description:
-        "Returns how demand for a phrase changed over time — a series of {date, count, share}, where share is the fraction of all Yandex searches. Use it for seasonality and trend. period sets the granularity (daily/weekly/monthly). fromDate/toDate bound the range — on the cloud flavor they are RFC3339 timestamps and toDate must align to the period boundary; on the oauth flavor they are YYYY-MM-DD.",
+        "Returns how demand for a phrase changed over time — a series of {date, count, share}, where share is the fraction of all Yandex searches. Use it for seasonality and trend. period sets the granularity (daily/weekly/monthly). fromDate/toDate bound the range as RFC3339 timestamps, and toDate must align to the period boundary.",
       inputSchema: {
         phrase: z.string().min(1).describe("The search phrase to research."),
         period: z
           .enum(["daily", "weekly", "monthly"])
           .optional()
           .describe("Granularity of the series. Default monthly."),
-        fromDate: z.string().optional().describe("Range start. cloud: RFC3339; oauth: YYYY-MM-DD."),
-        toDate: z.string().optional().describe("Range end (aligned to the period). cloud: RFC3339; oauth: YYYY-MM-DD."),
+        fromDate: z.string().optional().describe("Range start (RFC3339), e.g. 2026-01-01T00:00:00Z."),
+        toDate: z.string().optional().describe("Range end (RFC3339), aligned to the period boundary."),
         regionIds,
         devices,
       },
@@ -85,12 +85,11 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
           .enum(["all", "cities", "regions"])
           .optional()
           .describe("Grouping: all (default), cities (only cities), or regions (only subjects/oblasts)."),
-        devices,
       },
     },
-    async ({ phrase, regionMode, devices }) => {
+    async ({ phrase, regionMode }) => {
       try {
-        return ok(await client.regions({ phrase, regionMode, devices }));
+        return ok(await client.regions({ phrase, regionMode }));
       } catch (e) {
         return fail(e);
       }

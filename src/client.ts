@@ -1,4 +1,4 @@
-import type { Device, Period, RegionMode, WordstatConfig, WordstatFlavor } from "./types.js";
+import type { Device, Period, RegionMode, WordstatConfig } from "./types.js";
 import { WordstatError } from "./types.js";
 
 export type HttpMethod = "GET" | "POST";
@@ -6,10 +6,10 @@ export type HttpMethod = "GET" | "POST";
 /** Normalized inputs for the top/related-queries report. */
 export interface TopRequestsParams {
   phrase: string;
-  /** Region ids to scope demand to (e.g. 213 = Moscow). Coerced per flavor. */
+  /** Region ids to scope demand to (e.g. 213 = Moscow). */
   regionIds?: Array<string | number>;
   devices?: Device[];
-  /** Max phrases to return (cloud only: numPhrases 1..2000). Ignored on oauth. */
+  /** Max phrases to return (numPhrases 1..2000). */
   numPhrases?: number;
 }
 
@@ -17,9 +17,9 @@ export interface TopRequestsParams {
 export interface DynamicsParams {
   phrase: string;
   period?: Period;
-  /** Period start. Cloud expects RFC3339; oauth expects YYYY-MM-DD. Passed through. */
+  /** Period start (RFC3339). Passed through. */
   fromDate?: string;
-  /** Period end (must align to the period boundary). Passed through. */
+  /** Period end (RFC3339, aligned to the period boundary). Passed through. */
   toDate?: string;
   regionIds?: Array<string | number>;
   devices?: Device[];
@@ -29,31 +29,21 @@ export interface DynamicsParams {
 export interface RegionsParams {
   phrase: string;
   regionMode?: RegionMode;
-  devices?: Device[];
 }
 
-/** Maps a normalized device bucket to the wire value for each flavor. */
-function mapDevice(d: Device, flavor: WordstatFlavor): string {
-  if (flavor === "cloud") {
-    return { all: "DEVICE_ALL", desktop: "DEVICE_DESKTOP", phone: "DEVICE_PHONE", tablet: "DEVICE_TABLET" }[d];
-  }
-  return d; // oauth: all | desktop | phone | tablet
+/** Maps a normalized device bucket to the API's wire value. */
+function mapDevice(d: Device): string {
+  return { all: "DEVICE_ALL", desktop: "DEVICE_DESKTOP", phone: "DEVICE_PHONE", tablet: "DEVICE_TABLET" }[d];
 }
 
-/** Maps a normalized period to the wire value for each flavor. */
-function mapPeriod(p: Period, flavor: WordstatFlavor): string {
-  if (flavor === "cloud") {
-    return { daily: "PERIOD_DAILY", weekly: "PERIOD_WEEKLY", monthly: "PERIOD_MONTHLY" }[p];
-  }
-  return p; // oauth: daily | weekly | monthly
+/** Maps a normalized period to the API's wire value. */
+function mapPeriod(p: Period): string {
+  return { daily: "PERIOD_DAILY", weekly: "PERIOD_WEEKLY", monthly: "PERIOD_MONTHLY" }[p];
 }
 
-/** Maps a normalized region-distribution mode to the wire value for each flavor. */
-function mapRegionMode(m: RegionMode, flavor: WordstatFlavor): string {
-  if (flavor === "cloud") {
-    return { all: "REGION_ALL", cities: "REGION_CITIES", regions: "REGION_REGIONS" }[m];
-  }
-  return m; // oauth: all | cities | regions
+/** Maps a normalized region-distribution mode to the API's wire value. */
+function mapRegionMode(m: RegionMode): string {
+  return { all: "REGION_ALL", cities: "REGION_CITIES", regions: "REGION_REGIONS" }[m];
 }
 
 export class WordstatClient {
@@ -69,17 +59,11 @@ export class WordstatClient {
     this.retryBaseMs = config.retryBaseMs ?? 500;
   }
 
-  get flavor(): WordstatFlavor {
-    return this.config.flavor;
-  }
-
-  private get isCloud(): boolean {
-    return this.config.flavor === "cloud";
-  }
-
   private headers(hasBody: boolean): Record<string, string> {
-    const auth = this.isCloud ? `Api-Key ${this.config.token}` : `Bearer ${this.config.token}`;
-    const h: Record<string, string> = { Authorization: auth, "Accept-Language": this.config.lang };
+    const h: Record<string, string> = {
+      Authorization: `Api-Key ${this.config.token}`,
+      "Accept-Language": this.config.lang,
+    };
     if (hasBody) h["Content-Type"] = "application/json";
     return h;
   }
@@ -107,14 +91,13 @@ export class WordstatClient {
   }
 
   /**
-   * Low-level request to a Wordstat API path (e.g. "v2/wordstat/topRequests" or
-   * "v1/topRequests"). For the cloud flavor, folderId is injected into the body
-   * when absent. Retries 429 and 5xx with backoff; any other non-2xx throws a
-   * {@link WordstatError}.
+   * Low-level request to a Search API Wordstat path (e.g. "v2/wordstat/topRequests").
+   * folderId is injected into the body of every POST when absent. Retries 429 and
+   * 5xx with backoff; any other non-2xx throws a {@link WordstatError}.
    */
   async request<T = unknown>(method: HttpMethod, path: string, body?: Record<string, unknown>): Promise<T> {
     let payload = body;
-    if (this.isCloud && method === "POST") {
+    if (method === "POST") {
       payload = { folderId: this.config.folderId, ...(body ?? {}) };
     }
     const hasBody = payload !== undefined && method !== "GET";
@@ -155,67 +138,37 @@ export class WordstatClient {
 
   /** Top popular queries containing the phrase, plus semantically related ones. */
   async topRequests(p: TopRequestsParams): Promise<unknown> {
-    const devices = p.devices?.map((d) => mapDevice(d, this.flavor));
-    if (this.isCloud) {
-      return this.request("POST", "v2/wordstat/topRequests", compact({
-        phrase: p.phrase,
-        numPhrases: p.numPhrases,
-        regions: p.regionIds?.map(String),
-        devices,
-      }));
-    }
-    return this.request("POST", "v1/topRequests", compact({
+    return this.request("POST", "v2/wordstat/topRequests", compact({
       phrase: p.phrase,
-      regions: p.regionIds?.map(Number),
-      devices,
+      numPhrases: p.numPhrases,
+      regions: p.regionIds?.map(String),
+      devices: p.devices?.map(mapDevice),
     }));
   }
 
   /** Frequency of the phrase over time. */
   async dynamics(p: DynamicsParams): Promise<unknown> {
-    const period = p.period ? mapPeriod(p.period, this.flavor) : undefined;
-    const devices = p.devices?.map((d) => mapDevice(d, this.flavor));
-    if (this.isCloud) {
-      return this.request("POST", "v2/wordstat/dynamics", compact({
-        phrase: p.phrase,
-        period,
-        fromDate: p.fromDate,
-        toDate: p.toDate,
-        regions: p.regionIds?.map(String),
-        devices,
-      }));
-    }
-    return this.request("POST", "v1/dynamics", compact({
+    return this.request("POST", "v2/wordstat/dynamics", compact({
       phrase: p.phrase,
-      period,
+      period: p.period ? mapPeriod(p.period) : undefined,
       fromDate: p.fromDate,
       toDate: p.toDate,
-      regions: p.regionIds?.map(Number),
-      devices,
+      regions: p.regionIds?.map(String),
+      devices: p.devices?.map(mapDevice),
     }));
   }
 
   /** Distribution of the phrase's demand across regions (with affinity index). */
   async regions(p: RegionsParams): Promise<unknown> {
-    const devices = p.devices?.map((d) => mapDevice(d, this.flavor));
-    if (this.isCloud) {
-      return this.request("POST", "v2/wordstat/regions", compact({
-        phrase: p.phrase,
-        region: p.regionMode ? mapRegionMode(p.regionMode, "cloud") : undefined,
-      }));
-    }
-    // oauth: the grouping mode is passed in the `regions` field (not an id list).
-    return this.request("POST", "v1/regions", compact({
+    return this.request("POST", "v2/wordstat/regions", compact({
       phrase: p.phrase,
-      regions: p.regionMode ? mapRegionMode(p.regionMode, "oauth") : undefined,
-      devices,
+      region: p.regionMode ? mapRegionMode(p.regionMode) : undefined,
     }));
   }
 
   /** The reference tree of region ids → names that the other methods accept. */
   async regionsTree(): Promise<unknown> {
-    if (this.isCloud) return this.request("POST", "v2/wordstat/getRegionsTree", {});
-    return this.request("GET", "v1/getRegionsTree");
+    return this.request("POST", "v2/wordstat/getRegionsTree", {});
   }
 }
 

@@ -11,12 +11,12 @@ export function registerRawTool(server: McpServer, client: WordstatClient): void
       // The Wordstat API is read-only (no write endpoints), so this stays a read hint.
       annotations: READ_ONLY,
       description:
-        'Escape hatch to call any Wordstat API path directly, for endpoints without a dedicated tool. Pass the flavor-specific path — cloud: "v2/wordstat/topRequests"; oauth: "v1/topRequests" / "v1/getRegionsTree". `body` is sent as JSON (folderId is injected automatically on the cloud flavor). Default method POST; use GET only for the oauth getRegionsTree.',
+        'Escape hatch to call any Yandex Cloud Search API Wordstat path directly, for endpoints without a dedicated tool, e.g. "v2/wordstat/topRequests". `body` is sent as JSON (folderId is injected automatically). Method defaults to POST.',
       inputSchema: {
         path: z
           .string()
           .min(1)
-          .describe('API path, e.g. "v2/wordstat/dynamics" (cloud) or "v1/regions" (oauth).'),
+          .describe('API path, e.g. "v2/wordstat/dynamics".'),
         method: z.enum(["GET", "POST"]).optional().describe("HTTP method. Default POST."),
         body: z.record(z.any()).optional().describe("JSON request body."),
       },

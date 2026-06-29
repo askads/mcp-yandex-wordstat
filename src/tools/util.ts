@@ -1,7 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-/** Normalized device buckets accepted by every tool; the client maps to the flavor. */
+/** Normalized device buckets accepted by every tool; the client maps to the API's wire values. */
 export const deviceEnum = z.enum(["all", "desktop", "phone", "tablet"]);
 
 /** Wraps a value as a compact-JSON tool result (compact: the consumer is an LLM). */

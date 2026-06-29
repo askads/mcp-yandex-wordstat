@@ -1,11 +1,10 @@
-name: Health check (cloud)
+name: Health check
 
-# End-to-end read-only check against the live Yandex Cloud Search API v2 (cloud flavor →
-# searchapi.api.cloud.yandex.net). Auth is a long-lived Yandex Cloud API key (Api-Key, scope
-# yc.search-api.execute) + a folder id, stored as repo secrets — no per-run minting. Unlike
-# the oauth flavor, this endpoint has a valid cert and is globally reachable (works from
-# GitHub's US-hosted runners). smoke makes NO writes (pulls top requests for a sample phrase).
-# Runs daily + manual dispatch only (never on push/PR), so secrets aren't exposed to PRs/forks.
+# End-to-end read-only check against the live Yandex Cloud Search API v2
+# (searchapi.api.cloud.yandex.net). Auth is a long-lived Yandex Cloud API key (Api-Key, scope
+# yc.search-api.execute) + a folder id, stored as repo secrets — no per-run minting. smoke makes
+# NO writes (pulls top requests for a sample phrase). Runs daily + manual dispatch only (never on
+# push/PR), so secrets aren't exposed to PRs/forks.
 on:
   schedule:
     - cron: "0 9 * * *"
@@ -32,6 +31,5 @@ jobs:
       - name: Read-only smoke check
         run: npm run smoke
         env:
-          WORDSTAT_FLAVOR: cloud
           WORDSTAT_API_KEY: ${{ secrets.WORDSTAT_API_KEY }}
           WORDSTAT_FOLDER_ID: ${{ secrets.WORDSTAT_FOLDER_ID }}
