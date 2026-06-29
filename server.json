@@ -8,7 +8,7 @@
     "url": "https://github.com/askads/mcp-yandex-wordstat",
     "source": "github"
   },
-  "version": "1.0.1",
+  "version": "2.0.0",
   "packages": [
     {
       "registryType": "npm",
