@@ -2,6 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/mcp-yandex-wordstat)](https://www.npmjs.com/package/mcp-yandex-wordstat)
 [![CI](https://github.com/askads/mcp-yandex-wordstat/actions/workflows/ci.yml/badge.svg)](https://github.com/askads/mcp-yandex-wordstat/actions/workflows/ci.yml)
+[![Glama](https://glama.ai/mcp/servers/askads/mcp-yandex-wordstat/badges/score.svg)](https://glama.ai/mcp/servers/askads/mcp-yandex-wordstat)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 MCP-сервер для **Yandex Wordstat (Яндекс Вордстат)**: спрашивайте статистику поискового
