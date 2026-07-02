@@ -51,6 +51,8 @@ export class WordstatClient {
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
   private readonly retryBaseMs: number;
+  /** Lazy cache for the static region tree (see {@link regionsTree}). */
+  private regionsTreeCache?: Promise<unknown>;
 
   constructor(private readonly config: WordstatConfig) {
     this.base = config.apiBase.endsWith("/") ? config.apiBase : config.apiBase + "/";
@@ -75,11 +77,22 @@ export class WordstatClient {
     return Math.min(this.retryBaseMs * 2 ** attempt, 30_000);
   }
 
-  private async fetchWithTimeout(url: string, init: RequestInit, label: string): Promise<Response> {
+  /**
+   * fetch with an AbortController timeout. Reads the response body inside the
+   * guarded zone so the timeout also covers a slow or drip-feeding body, not just
+   * the initial headers, and returns the text alongside the response.
+   */
+  private async fetchWithTimeout(
+    url: string,
+    init: RequestInit,
+    label: string,
+  ): Promise<{ res: Response; text: string }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      return await fetch(url, { ...init, signal: controller.signal });
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      const text = await res.text();
+      return { res, text };
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         throw new Error(`Request to "${label}" timed out after ${this.timeoutMs}ms`);
@@ -92,31 +105,57 @@ export class WordstatClient {
 
   /**
    * Low-level request to a Search API Wordstat path (e.g. "v2/wordstat/topRequests").
-   * folderId is injected into the body of every POST when absent. Retries 429 and
-   * 5xx with backoff; any other non-2xx throws a {@link WordstatError}.
+   * folderId is injected into the body of every POST when absent. Retries 429, 5xx
+   * and network errors/timeouts with backoff; any other non-2xx throws a
+   * {@link WordstatError}.
    */
   async request<T = unknown>(method: HttpMethod, path: string, body?: Record<string, unknown>): Promise<T> {
     let payload = body;
     if (method === "POST") {
       payload = { folderId: this.config.folderId, ...(body ?? {}) };
     }
+    // Guard method !== "GET" keeps undici from crashing on a GET-with-body.
     const hasBody = payload !== undefined && method !== "GET";
-    const url = new URL(path.replace(/^\//, ""), this.base).toString();
+
+    // Resolve the path against the API base, then reject anything that escaped to a
+    // foreign origin (an absolute "https://evil/x" or a "\\evil/x" slipped through
+    // raw_request) so the Api-Key header can never leak to another host.
+    const url = new URL(path.replace(/^\//, ""), this.base);
+    if (url.origin !== new URL(this.base).origin) {
+      throw new Error(`raw_request path must be a relative API path (resolved to foreign origin ${url.origin})`);
+    }
+    const target = url.toString();
+
+    // The Wordstat API is read-only: GET has no endpoints and every report is a
+    // side-effect-free POST, so all requests are safe to retry. (A write API must
+    // gate 5xx/network retries to idempotent methods, or a 502 after the write
+    // commits would duplicate it — see the sibling servers.)
+    const idempotent = true;
 
     for (let attempt = 0; ; attempt++) {
-      const res = await this.fetchWithTimeout(
-        url,
-        {
-          method,
-          headers: this.headers(hasBody),
-          body: hasBody ? JSON.stringify(payload) : undefined,
-        },
-        path,
-      );
+      let res: Response;
+      let text: string;
+      try {
+        ({ res, text } = await this.fetchWithTimeout(
+          target,
+          {
+            method,
+            headers: this.headers(hasBody),
+            body: hasBody ? JSON.stringify(payload) : undefined,
+          },
+          path,
+        ));
+      } catch (err) {
+        // Network error or timeout: retry idempotent requests with backoff; on the
+        // last attempt (or a non-idempotent method) rethrow the original error.
+        if (idempotent && attempt < this.maxRetries) {
+          await delay(this.backoffMs(attempt));
+          continue;
+        }
+        throw err;
+      }
 
-      const text = await res.text();
-
-      const transient = res.status === 429 || (res.status >= 500 && res.status < 600);
+      const transient = res.status === 429 || (idempotent && res.status >= 500 && res.status < 600);
       if (transient && attempt < this.maxRetries) {
         await delay(this.backoffMs(attempt, res));
         continue;
@@ -166,9 +205,21 @@ export class WordstatClient {
     }));
   }
 
-  /** The reference tree of region ids → names that the other methods accept. */
+  /**
+   * The reference tree of region ids → names that the other methods accept.
+   * The tree is static within a process, so it is fetched once and reused (this
+   * also dedupes concurrent calls). A failed fetch is not cached. In per-request
+   * MCP hosts the cache dies with the request; long-lived clients skip the
+   * re-download.
+   */
   async regionsTree(): Promise<unknown> {
-    return this.request("POST", "v2/wordstat/getRegionsTree", {});
+    if (!this.regionsTreeCache) {
+      this.regionsTreeCache = this.request("POST", "v2/wordstat/getRegionsTree", {}).catch((err) => {
+        this.regionsTreeCache = undefined;
+        throw err;
+      });
+    }
+    return this.regionsTreeCache;
   }
 }
 

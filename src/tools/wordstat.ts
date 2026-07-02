@@ -1,11 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { WordstatClient } from "../client.js";
-import { deviceEnum, fail, ok, READ_ONLY } from "./util.js";
+import { deviceEnum, fail, ok, READ_ONLY, rfc3339Date } from "./util.js";
 
 /** Region ids accept numbers or numeric strings; the client coerces them for the API. */
 const regionIds = z
-  .array(z.union([z.number().int(), z.string()]))
+  .array(z.union([z.number().int(), z.string().regex(/^\d+$/, "region id must be numeric")]))
   .optional()
   .describe("Region ids to scope demand to, e.g. [213] (Moscow), [2] (St. Petersburg). Get ids from list_regions. Omit for all regions.");
 
@@ -57,8 +57,8 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
           .enum(["daily", "weekly", "monthly"])
           .optional()
           .describe("Granularity of the series. Default monthly."),
-        fromDate: z.string().optional().describe("Range start (RFC3339), e.g. 2026-01-01T00:00:00Z."),
-        toDate: z.string().optional().describe("Range end (RFC3339), aligned to the period boundary."),
+        fromDate: rfc3339Date().optional().describe("Range start (RFC3339), e.g. 2026-01-01T00:00:00Z."),
+        toDate: rfc3339Date().optional().describe("Range end (RFC3339), aligned to the period boundary."),
         regionIds,
         devices,
       },

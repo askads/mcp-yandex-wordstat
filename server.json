@@ -8,13 +8,13 @@
     "url": "https://github.com/askads/mcp-yandex-wordstat",
     "source": "github"
   },
-  "version": "2.0.0",
+  "version": "2.0.1",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcp-yandex-wordstat",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "transport": {
         "type": "stdio"
       },
@@ -35,6 +35,24 @@
           "description": "Language for API responses (ru, en, ...).",
           "isRequired": false,
           "default": "ru"
+        },
+        {
+          "name": "WORDSTAT_API_BASE",
+          "description": "API root host override.",
+          "isRequired": false,
+          "default": "https://searchapi.api.cloud.yandex.net"
+        },
+        {
+          "name": "WORDSTAT_TIMEOUT_MS",
+          "description": "Per-request timeout in milliseconds.",
+          "isRequired": false,
+          "default": "60000"
+        },
+        {
+          "name": "WORDSTAT_MAX_RETRIES",
+          "description": "Retries on transient errors (429, 5xx, network).",
+          "isRequired": false,
+          "default": "3"
         }
       ]
     }

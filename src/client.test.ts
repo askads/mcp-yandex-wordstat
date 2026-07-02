@@ -103,3 +103,198 @@ test("non-2xx throws WordstatError carrying the status", async () => {
     globalThis.fetch = orig;
   }
 });
+
+// --- Retry / timeout / SSRF behavior ---
+
+const BASE = "https://searchapi.api.cloud.yandex.net";
+
+function makeClient(overrides: Partial<WordstatConfig> = {}) {
+  return new WordstatClient({
+    token: "T",
+    folderId: "fld-1",
+    apiBase: BASE,
+    lang: "ru",
+    retryBaseMs: 0, // no real backoff delay in tests
+    ...overrides,
+  });
+}
+
+function mockFetch(handler: (url: string, init: RequestInit) => Response | Promise<Response>) {
+  const original = globalThis.fetch;
+  const calls: { url: string; init: RequestInit }[] = [];
+  globalThis.fetch = (async (url: unknown, init: unknown) => {
+    const i = (init ?? {}) as RequestInit;
+    calls.push({ url: String(url), init: i });
+    return handler(String(url), i);
+  }) as typeof fetch;
+  return {
+    calls,
+    restore() {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+test("request() retries a 429 rate limit then returns the result", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    if (calls === 1) return new Response("rate limited", { status: 429 });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
+  try {
+    const result = await makeClient().topRequests({ phrase: "x" });
+    assert.deepEqual(result, { ok: true });
+    assert.equal(calls, 2);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() retries a 5xx then returns the result", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    if (calls === 1) return new Response("unavailable", { status: 503 });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
+  try {
+    const result = await makeClient().topRequests({ phrase: "x" });
+    assert.deepEqual(result, { ok: true });
+    assert.equal(calls, 2);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() does not retry a 400 and gives up after maxRetries on 429", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    return new Response("nope", { status: 400 });
+  });
+  try {
+    await assert.rejects(() => makeClient().topRequests({ phrase: "x" }), /HTTP 400/);
+    assert.equal(calls, 1);
+  } finally {
+    mock.restore();
+  }
+
+  calls = 0;
+  const mock2 = mockFetch(() => {
+    calls++;
+    return new Response("slow down", { status: 429 });
+  });
+  try {
+    await assert.rejects(() => makeClient({ maxRetries: 2 }).topRequests({ phrase: "x" }), /HTTP 429/);
+    assert.equal(calls, 3); // initial + 2 retries
+  } finally {
+    mock2.restore();
+  }
+});
+
+test("request() retries a network error for reads then succeeds", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    if (calls === 1) throw new Error("ECONNRESET");
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
+  try {
+    const result = await makeClient().topRequests({ phrase: "x" });
+    assert.deepEqual(result, { ok: true });
+    assert.equal(calls, 2);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() rethrows the network error after maxRetries", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    throw new Error("ECONNRESET");
+  });
+  try {
+    await assert.rejects(() => makeClient({ maxRetries: 2 }).topRequests({ phrase: "x" }), /ECONNRESET/);
+    assert.equal(calls, 3); // initial + 2 retries
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() aborts and reports a timeout when the request hangs", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = ((_url: unknown, init: unknown) =>
+    new Promise((_resolve, reject) => {
+      const signal = (init as RequestInit).signal as AbortSignal;
+      signal.addEventListener("abort", () =>
+        reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+      );
+    })) as typeof fetch;
+  try {
+    const client = makeClient({ timeoutMs: 10, maxRetries: 0 });
+    await assert.rejects(() => client.topRequests({ phrase: "x" }), /timed out after 10ms/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("request() rejects an absolute path (SSRF) and never fetches a foreign origin", async () => {
+  for (const evil of ["https://evil.example/steal", "http://evil.example/x", "\\\\evil.example/x"]) {
+    const mock = mockFetch(() => new Response("{}", { status: 200 }));
+    try {
+      await assert.rejects(() => makeClient().request("POST", evil, {}), /foreign origin/);
+      assert.equal(mock.calls.length, 0, `must not fetch for ${JSON.stringify(evil)}`);
+    } finally {
+      mock.restore();
+    }
+  }
+});
+
+test("request() still accepts a relative API path", async () => {
+  const mock = mockFetch(() => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+  try {
+    const result = await makeClient().request("POST", "v2/wordstat/topRequests", {});
+    assert.deepEqual(result, { ok: true });
+    assert.equal(mock.calls[0].url, `${BASE}/v2/wordstat/topRequests`);
+  } finally {
+    mock.restore();
+  }
+});
+
+test("regionsTree caches the static tree across calls (fetched once)", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    return new Response(JSON.stringify({ tree: [] }), { status: 200 });
+  });
+  try {
+    const client = makeClient();
+    const a = await client.regionsTree();
+    const b = await client.regionsTree();
+    assert.deepEqual(a, { tree: [] });
+    assert.deepEqual(b, { tree: [] });
+    assert.equal(calls, 1); // second call served from cache
+  } finally {
+    mock.restore();
+  }
+});
+
+test("regionsTree does not cache a failed fetch", async () => {
+  let calls = 0;
+  const mock = mockFetch(() => {
+    calls++;
+    if (calls === 1) return new Response("boom", { status: 500 });
+    return new Response(JSON.stringify({ tree: [1] }), { status: 200 });
+  });
+  try {
+    const client = makeClient({ maxRetries: 0 });
+    await assert.rejects(() => client.regionsTree(), /HTTP 500/);
+    const ok = await client.regionsTree();
+    assert.deepEqual(ok, { tree: [1] });
+    assert.equal(calls, 2); // failure was not cached, so it refetched
+  } finally {
+    mock.restore();
+  }
+});

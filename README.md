@@ -148,6 +148,12 @@ claude mcp add yandex-wordstat \
 - **Общая квота.** Лимит (по биллингу Yandex Cloud Search API) считается на один ключ, общий
   для всех вызовов. Кэшируйте `list_regions` и ответы по фразам, не гоните частоту.
 
+## Документация
+
+- [Все инструменты](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/TOOLS.md) — полный список с описанием.
+- [Разработка](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/DEVELOPMENT.md) — сборка, тесты, smoke-проверка.
+- [Публикация](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/PUBLISHING.md) — релиз и листинг в каталогах MCP.
+
 ## Поддержка
 
 Вопросы, идеи и доработки — пишите в Telegram: [@gistrec](http://t.me/gistrec).
