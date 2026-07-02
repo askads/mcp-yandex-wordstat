@@ -12,6 +12,19 @@ MCP-сервер для **Yandex Wordstat (Яндекс Вордстат)**: с�
 Ассистент сам подбирает ключевые слова, оценивает спрос и его динамику и сравнивает регионы —
 то, что в вебе Вордстата приходится листать по трём вкладкам вручную.
 
+## Быстрый старт
+
+1. [Получите API-ключ](#получение-доступа) Yandex Cloud — тот же тип ключа, что для YandexGPT.
+2. Добавьте сервер — например, в Claude Code ([другие клиенты](#установка)):
+
+   ```bash
+   claude mcp add yandex-wordstat \
+     -e WORDSTAT_API_KEY=ваш_ключ -e WORDSTAT_FOLDER_ID=ваш_folder \
+     -- npx -y mcp-yandex-wordstat
+   ```
+
+3. Спросите ассистента: «Сколько в месяц ищут "купить велосипед" и какие есть похожие запросы?»
+
 ## Что умеет
 
 - **Топ и похожие запросы** — `top_requests`: популярные запросы с фразой + семантически
@@ -45,7 +58,7 @@ MCP-сервер для **Yandex Wordstat (Яндекс Вордстат)**: с�
 > сервера); отдельной осталась только веб-версия на [wordstat.yandex.ru](https://wordstat.yandex.ru).
 > Поддержка флейвора `oauth` удалена в версии 2.0.0.
 
-## Быстрая установка
+## Установка
 
 <details open>
 <summary><b>Claude Code</b></summary>
@@ -54,6 +67,14 @@ MCP-сервер для **Yandex Wordstat (Яндекс Вордстат)**: с�
 claude mcp add yandex-wordstat \
   -e WORDSTAT_API_KEY=ваш_ключ -e WORDSTAT_FOLDER_ID=ваш_folder \
   -- npx -y mcp-yandex-wordstat
+```
+
+Либо через маркетплейс плагинов — токен спросится диалогом при включении и сохранится
+в системном keychain (не в конфиге открытым текстом):
+
+```
+/plugin marketplace add askads/claude-plugins
+/plugin install yandex-wordstat@askads
 ```
 
 </details>
@@ -121,7 +142,7 @@ claude mcp add yandex-wordstat \
 1. Создайте сервисный аккаунт с ролью `search-api.webSearch.user` и получите для него
    API-ключ со scope `yc.search-api.execute` — см.
    [документацию AI Studio](https://yandex.cloud/ru/docs/ai-studio/operations/get-api-key).
-2. Узнайте `folderId` каталога в Cloud Console.
+2. Узнайте `folderId` — идентификатор каталога виден в [консоли Yandex Cloud](https://console.yandex.cloud/) на странице каталога (и в её URL).
 3. Запишите ключ в `WORDSTAT_API_KEY`, каталог — в `WORDSTAT_FOLDER_ID`.
 
 ⚠️ Ключ хранится **открытым текстом** в конфиге клиента — относитесь как к паролю.
@@ -153,6 +174,13 @@ claude mcp add yandex-wordstat \
 - [Все инструменты](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/TOOLS.md) — полный список с описанием.
 - [Разработка](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/DEVELOPMENT.md) — сборка, тесты, smoke-проверка.
 - [Публикация](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/PUBLISHING.md) — релиз и листинг в каталогах MCP.
+
+## Смотрите также
+
+- **[Ask Ads](https://askads.ru)** — чат-аналитик и «Сторож» рекламных кабинетов от авторов
+  этого сервера: алерты о сливах бюджета и поломках трекинга — в Telegram.
+- **[askads/claude-plugins](https://github.com/askads/claude-plugins)** — маркетплейс плагинов
+  Claude: серверы Ask Ads ставятся одной командой, токены спрашиваются при включении.
 
 ## Поддержка
 
