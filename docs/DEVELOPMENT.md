@@ -44,7 +44,7 @@ Search API (Wordstat) responses — no key and no network needed. Regenerate:
 npm run build && vhs docs/demo.tape   # requires vhs: brew install vhs
 ```
 
-Important: with the settings in `docs/demo.tape` the vhs terminal is 95 columns ×
-32 rows, and the capture freezes if the buffer scrolls. When changing the scenario
+Important: with the settings in `docs/demo.tape` the vhs terminal is 97 columns ×
+33 rows, and the capture freezes if the buffer scrolls. When changing the scenario
 or the fixtures, keep the whole output on a single screen — don't grow the text or
 the tables without shrinking something else.
