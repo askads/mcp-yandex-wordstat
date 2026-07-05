@@ -1,6 +1,6 @@
 {
   "name": "mcp-yandex-wordstat",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "MCP server for the Yandex Wordstat API via Yandex Cloud Search API v2 — search-demand statistics (top & related queries, time dynamics, regional distribution) for AI agents.",
   "mcpName": "io.github.askads/mcp-yandex-wordstat",
   "type": "module",
@@ -8,7 +8,8 @@
     "mcp-yandex-wordstat": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "test"
   ],
   "engines": {
     "node": ">=20"
@@ -19,7 +20,9 @@
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc -p tsconfig.check.json",
     "smoke": "node --import tsx src/smoke.ts",
-    "test": "node --import tsx --test $(find src -name '*.test.ts')",
+    "test": "npm run test:src && npm run test:dist",
+    "test:src": "node --import tsx --test $(find src -name '*.test.ts')",
+    "test:dist": "npm run build && node --test test/dist-smoke.test.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm test"
   },
