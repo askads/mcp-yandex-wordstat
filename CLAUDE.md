@@ -33,6 +33,8 @@ npm run smoke      # live READ-ONLY call (needs WORDSTAT_API_KEY + WORDSTAT_FOLD
   `src/tools/raw.ts` — `raw_request` (POST only). `src/tools/util.ts` — `ok`/`fail`, the
   `READ_ONLY` annotation and shared zod schema factories (`deviceEnum`, `rfc3339Date`).
 - `src/index.ts` — wires every `register*` into the McpServer.
+- `src/telemetry.ts` — anonymous usage pings (ids/names/versions only, never data or
+  arguments; fire-and-forget, must never block or throw; opt-out `ASKADS_TELEMETRY=0`).
 
 ## Conventions (do not break)
 
