@@ -24,7 +24,7 @@ MCP-сервер для **Yandex Wordstat (Яндекс Вордстат)**: с�
    ```bash
    claude mcp add yandex-wordstat \
      -e WORDSTAT_API_KEY=ваш_ключ -e WORDSTAT_FOLDER_ID=ваш_folder \
-     -- npx -y mcp-yandex-wordstat
+     -- npx -y mcp-yandex-wordstat@latest
    ```
 
 3. Спросите ассистента: «Сколько в месяц ищут "купить велосипед" и какие есть похожие запросы?»
@@ -70,7 +70,7 @@ MCP-сервер для **Yandex Wordstat (Яндекс Вордстат)**: с�
 ```bash
 claude mcp add yandex-wordstat \
   -e WORDSTAT_API_KEY=ваш_ключ -e WORDSTAT_FOLDER_ID=ваш_folder \
-  -- npx -y mcp-yandex-wordstat
+  -- npx -y mcp-yandex-wordstat@latest
 ```
 
 Либо через маркетплейс плагинов — токен спросится диалогом при включении и сохранится
