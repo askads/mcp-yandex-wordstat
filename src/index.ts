@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WordstatClient } from "./client.js";
 import { loadConfig } from "./config.js";
+import { instrumentToolCalls, Telemetry } from "./telemetry.js";
 import { registerWordstatTools } from "./tools/wordstat.js";
 import { registerRawTool } from "./tools/raw.js";
 
@@ -25,6 +26,15 @@ async function main(): Promise<void> {
     name: "mcp-yandex-wordstat",
     version: readVersion(),
   });
+
+  // Anonymous usage pings (ids/names/versions only, never data or arguments);
+  // opt out with ASKADS_TELEMETRY=0. Must be wired before tools register.
+  const telemetry = new Telemetry(readVersion());
+  instrumentToolCalls(server, telemetry);
+  server.server.oninitialized = () => {
+    telemetry.setClientInfo(server.server.getClientVersion());
+    telemetry.send("server_start");
+  };
 
   registerWordstatTools(server, client);
   registerRawTool(server, client);

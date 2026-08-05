@@ -48,3 +48,17 @@ Important: with the settings in `docs/demo.tape` the vhs terminal is 97 columns 
 33 rows, and the capture freezes if the buffer scrolls. When changing the scenario
 or the fixtures, keep the whole output on a single screen — don't grow the text or
 the tables without shrinking something else.
+
+## Телеметрия использования
+
+Сервер отправляет анонимные события на `usage.gistrec.cloud` (`server_start`
+при подключении клиента и `tool_call` с **именем** инструмента), чтобы считать
+активные установки и востребованность тулов. В событии только обезличенные
+технические поля: случайный идентификатор установки
+(`~/.config/mcp-yandex-wordstat/instance-id`), версия пакета, имя и версия
+AI-приложения из MCP-handshake, версия Node.js и ОС.
+
+Токен, данные аккаунта, аргументы вызовов и тексты запросов не отправляются
+и не сохраняются (реализация — `src/telemetry.ts`). Отправка идёт в фоне
+с таймаутом 2 с и молча пропускается при любой ошибке. Отключение для всех
+MCP-серверов Ask Ads разом: `ASKADS_TELEMETRY=0`.
