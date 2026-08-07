@@ -3,14 +3,28 @@ import type { WordstatConfig } from "./types.js";
 /** Default Yandex Cloud Search API host. */
 const DEFAULT_BASE = "https://searchapi.api.cloud.yandex.net";
 
-function die(message: string): never {
-  console.error(`Error: ${message}`);
-  process.exit(1);
+/**
+ * A missing or malformed environment variable. Thrown instead of exiting on the
+ * spot so index.ts can report the drop-off before the process dies; `reason` is
+ * the machine-readable code that ships with that ping (never a variable's value).
+ */
+export class ConfigError extends Error {
+  readonly reason: string;
+
+  constructor(message: string, reason: string) {
+    super(message);
+    this.name = "ConfigError";
+    this.reason = reason;
+  }
+}
+
+function die(message: string, reason: string): never {
+  throw new ConfigError(message, reason);
 }
 
 /**
- * Builds the client config from environment variables, exiting if a required
- * one is missing.
+ * Builds the client config from environment variables, throwing ConfigError if
+ * a required one is missing.
  *
  *   WORDSTAT_API_KEY    Yandex Cloud Search API key (required)
  *   WORDSTAT_FOLDER_ID  Yandex Cloud folder id (required)
@@ -19,9 +33,13 @@ function die(message: string): never {
  */
 export function loadConfig(): WordstatConfig {
   const token = process.env.WORDSTAT_API_KEY;
-  if (!token) die("WORDSTAT_API_KEY is required (Yandex Cloud Search API key).");
+  if (!token) {
+    die("WORDSTAT_API_KEY is required (Yandex Cloud Search API key).", "missing_token");
+  }
   const folderId = process.env.WORDSTAT_FOLDER_ID;
-  if (!folderId) die("WORDSTAT_FOLDER_ID is required (Yandex Cloud folder id).");
+  if (!folderId) {
+    die("WORDSTAT_FOLDER_ID is required (Yandex Cloud folder id).", "missing_folder_id");
+  }
 
   const timeoutMs = Number(process.env.WORDSTAT_TIMEOUT_MS);
   const maxRetries = Number(process.env.WORDSTAT_MAX_RETRIES);

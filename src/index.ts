@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WordstatClient } from "./client.js";
-import { loadConfig } from "./config.js";
+import { ConfigError, loadConfig } from "./config.js";
 import { instrumentToolCalls, Telemetry } from "./telemetry.js";
+import type { WordstatConfig } from "./types.js";
 import { registerWordstatTools } from "./tools/wordstat.js";
 import { registerRawTool } from "./tools/raw.js";
 
@@ -18,8 +19,29 @@ function readVersion(): string {
   }
 }
 
+/**
+ * Loads the config, reporting the drop-off if it is missing. An unconfigured
+ * server dies before the MCP handshake, so this ping is the only trace such an
+ * install ever leaves — and it has to be awaited, or process.exit() below would
+ * kill the request in flight.
+ */
+async function loadConfigOrExit(telemetry: Telemetry): Promise<WordstatConfig> {
+  try {
+    return loadConfig();
+  } catch (err) {
+    if (!(err instanceof ConfigError)) throw err;
+    console.error(`Error: ${err.message}`);
+    await telemetry.sendBlocking("startup_failed", { reason: err.reason });
+    process.exit(1);
+  }
+}
+
 async function main(): Promise<void> {
-  const config = loadConfig();
+  // Anonymous usage pings (ids/names/versions only, never data or arguments);
+  // opt out with ASKADS_TELEMETRY=0. Built before the config so a missing key
+  // can be reported; wired to the server before tools register.
+  const telemetry = new Telemetry(readVersion());
+  const config = await loadConfigOrExit(telemetry);
   const client = new WordstatClient(config);
 
   const server = new McpServer({
@@ -27,9 +49,6 @@ async function main(): Promise<void> {
     version: readVersion(),
   });
 
-  // Anonymous usage pings (ids/names/versions only, never data or arguments);
-  // opt out with ASKADS_TELEMETRY=0. Must be wired before tools register.
-  const telemetry = new Telemetry(readVersion());
   instrumentToolCalls(server, telemetry);
   server.server.oninitialized = () => {
     telemetry.setClientInfo(server.server.getClientVersion());
