@@ -7,6 +7,23 @@
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-08-07
+
+### Добавлено
+- Событие телеметрии `startup_failed`: сервер, умирающий из-за отсутствующих
+  credentials, сообщает об этом до выхода — с машинным кодом причины
+  (`missing_token`, `missing_folder_id`). Раньше такие установки не
+  попадали в телеметрию вовсе:
+  процесс завершался раньше MCP-хендшейка, и «не смог настроить» было
+  неотличимо от «поставил и не пользуется». Отправляется только код —
+  ни имя, ни значение переменной окружения; отключение прежнее:
+  `ASKADS_TELEMETRY=0`.
+
+### Изменено
+- Конфигурация бросает `ConfigError` вместо немедленного `process.exit`, чтобы
+  точка входа успела отправить пинг. Сообщение об ошибке и код возврата для
+  пользователя не изменились; ожидание отправки ограничено прежними 2 с.
+
 ## [2.1.0] — 2026-08-05
 
 ### Добавлено
@@ -91,7 +108,9 @@
 - Ретраи на 429/5xx с бэкоффом (учёт `Retry-After`), таймаут запроса,
   `WordstatError(status, body)`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.2.0
+[2.1.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.1.0
 [2.0.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.0.0
 [1.0.1]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v1.0.1
 [1.0.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v1.0.0
