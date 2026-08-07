@@ -20,7 +20,9 @@ npm run smoke      # live READ-ONLY call (needs WORDSTAT_API_KEY + WORDSTAT_FOLD
 
 ## Architecture
 
-- `src/config.ts` — env → config. Requires `WORDSTAT_API_KEY` + `WORDSTAT_FOLDER_ID`;
+- `src/config.ts` — env → config; throws `ConfigError` (with a `reason` code) instead of
+  exiting, so `index.ts` can report the drop-off before dying.
+  Requires `WORDSTAT_API_KEY` + `WORDSTAT_FOLDER_ID`;
   optional `WORDSTAT_LANG`, `WORDSTAT_API_BASE`, `WORDSTAT_TIMEOUT_MS`, `WORDSTAT_MAX_RETRIES`.
 - `src/client.ts` — maps each logical call (`topRequests`/`dynamics`/`regions`/`regionsTree`)
   to a `v2/wordstat/*` path: `Api-Key` auth, all `POST`, `folderId` injected into every body,
@@ -35,6 +37,9 @@ npm run smoke      # live READ-ONLY call (needs WORDSTAT_API_KEY + WORDSTAT_FOLD
 - `src/index.ts` — wires every `register*` into the McpServer.
 - `src/telemetry.ts` — anonymous usage pings (ids/names/versions only, never data or
   arguments; fire-and-forget, must never block or throw; opt-out `ASKADS_TELEMETRY=0`).
+  `startup_failed` is the exception: `sendBlocking` awaits it, because the caller
+  exits right after and a fire-and-forget ping would die in flight. Its `reason`
+  is a closed vocabulary (`missing_token`, …) — never a variable's name or value.
 
 ## Conventions (do not break)
 

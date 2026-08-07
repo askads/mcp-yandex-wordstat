@@ -1,4 +1,4 @@
-import { loadConfig } from "./config.js";
+import { ConfigError, loadConfig } from "./config.js";
 import { WordstatClient } from "./client.js";
 
 /** Live READ-ONLY smoke check: pulls top requests for a sample phrase. */
@@ -10,6 +10,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error("smoke failed:", err);
+  // A missing key is a user error, not a bug: report it without the stack.
+  console.error("smoke failed:", err instanceof ConfigError ? err.message : err);
   process.exit(1);
 });
