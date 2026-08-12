@@ -5,25 +5,25 @@ import { deviceEnum, fail, ok, READ_ONLY, rfc3339Date } from "./util.js";
 
 /** Region ids accept numbers or numeric strings; the client coerces them for the API. */
 const regionIds = z
-  .array(z.union([z.number().int(), z.string().regex(/^\d+$/, "region id must be numeric")]))
+  .array(z.union([z.number().int(), z.string().regex(/^\d+$/, "id региона должен быть числом")]))
   .optional()
-  .describe("Region ids to scope demand to, e.g. [213] (Moscow), [2] (St. Petersburg). Get ids from list_regions. Omit for all regions.");
+  .describe("Id регионов, которыми ограничить спрос, например [213] (Москва), [2] (Санкт-Петербург). Id берутся из list_regions. Без параметра — все регионы.");
 
 const devices = z
   .array(deviceEnum)
   .optional()
-  .describe("Device filter: any of all, desktop, phone, tablet. Omit for all devices.");
+  .describe("Фильтр по устройствам: любые из all, desktop, phone, tablet. Без параметра — все устройства.");
 
 export function registerWordstatTools(server: McpServer, client: WordstatClient): void {
   server.registerTool(
     "top_requests",
     {
-      title: "Top & related queries",
+      title: "Топ и похожие запросы",
       annotations: READ_ONLY,
       description:
-        "Returns search-demand for a phrase over the last 30 days: the most popular queries that CONTAIN the phrase (results) and semantically RELATED queries that may not contain it (associations), plus totalCount. Use it to discover keywords and gauge demand. Counts can arrive as strings (int64). Optional regionIds and devices narrow the result; numPhrases sets how many to return (1..2000).",
+        "Возвращает поисковый спрос по фразе за последние 30 дней: самые популярные запросы, которые СОДЕРЖАТ фразу (results), и семантически ПОХОЖИЕ запросы, которые могут её не содержать (associations), плюс totalCount. Подходит для подбора ключевых фраз и оценки спроса. Значения счётчиков могут приходить строками (int64). Необязательные regionIds и devices сужают выборку; numPhrases задаёт, сколько фраз вернуть (1..2000).",
       inputSchema: {
-        phrase: z.string().min(1).describe("The search phrase to research, e.g. «купить велосипед»."),
+        phrase: z.string().min(1).describe("Поисковая фраза для анализа, например «купить велосипед»."),
         regionIds,
         devices,
         numPhrases: z
@@ -32,7 +32,7 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
           .min(1)
           .max(2000)
           .optional()
-          .describe("How many top phrases to return (1..2000; default 20)."),
+          .describe("Сколько топовых фраз вернуть (1..2000; по умолчанию 20)."),
       },
     },
     async ({ phrase, regionIds, devices, numPhrases }) => {
@@ -47,18 +47,18 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
   server.registerTool(
     "dynamics",
     {
-      title: "Demand dynamics over time",
+      title: "Динамика спроса во времени",
       annotations: READ_ONLY,
       description:
-        "Returns how demand for a phrase changed over time — a series of {date, count, share}, where share is the fraction of all Yandex searches. Use it for seasonality and trend. period sets the granularity (daily/weekly/monthly). fromDate/toDate bound the range as RFC3339 timestamps, and toDate must align to the period boundary.",
+        "Возвращает, как менялся спрос на фразу во времени, — ряд {date, count, share}, где share — доля от всех поисковых запросов Яндекса. Подходит для оценки сезонности и тренда. period задаёт шаг ряда (daily/weekly/monthly). fromDate/toDate ограничивают диапазон метками времени RFC3339, при этом toDate должен попадать на границу периода.",
       inputSchema: {
-        phrase: z.string().min(1).describe("The search phrase to research."),
+        phrase: z.string().min(1).describe("Поисковая фраза для анализа."),
         period: z
           .enum(["daily", "weekly", "monthly"])
           .optional()
-          .describe("Granularity of the series. Default monthly."),
-        fromDate: rfc3339Date().optional().describe("Range start (RFC3339), e.g. 2026-01-01T00:00:00Z."),
-        toDate: rfc3339Date().optional().describe("Range end (RFC3339), aligned to the period boundary."),
+          .describe("Шаг ряда. По умолчанию monthly."),
+        fromDate: rfc3339Date().optional().describe("Начало диапазона (RFC3339), например 2026-01-01T00:00:00Z."),
+        toDate: rfc3339Date().optional().describe("Конец диапазона (RFC3339), выровненный по границе периода."),
         regionIds,
         devices,
       },
@@ -75,16 +75,16 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
   server.registerTool(
     "regions",
     {
-      title: "Regional distribution",
+      title: "Распределение по регионам",
       annotations: READ_ONLY,
       description:
-        "Returns how demand for a phrase is distributed across regions over the last 30 days. Each row has the region id, count, share and affinityIndex (>100% = above-average interest in that region, <100% = below). regionMode chooses the grouping: all, cities (only cities) or regions (only oblasts/subjects). Map region ids to names with list_regions.",
+        "Возвращает, как спрос на фразу распределён по регионам за последние 30 дней. В каждой строке — id региона, count, share и affinityIndex (>100% — интерес в регионе выше среднего, <100% — ниже). regionMode выбирает группировку: all, cities (только города) или regions (только области и субъекты). Сопоставить id регионов с названиями помогает list_regions.",
       inputSchema: {
-        phrase: z.string().min(1).describe("The search phrase to research."),
+        phrase: z.string().min(1).describe("Поисковая фраза для анализа."),
         regionMode: z
           .enum(["all", "cities", "regions"])
           .optional()
-          .describe("Grouping: all (default), cities (only cities), or regions (only subjects/oblasts)."),
+          .describe("Группировка: all (по умолчанию), cities (только города) или regions (только субъекты и области)."),
       },
     },
     async ({ phrase, regionMode }) => {
@@ -99,10 +99,10 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
   server.registerTool(
     "list_regions",
     {
-      title: "Region reference tree",
+      title: "Справочное дерево регионов",
       annotations: READ_ONLY,
       description:
-        "Returns the reference tree of regions Wordstat supports — region ids and their names (label). The ids feed the regionIds/regionMode of the other tools, and the names decode region ids in their responses. The tree is large and stable; fetch it once and cache it.",
+        "Возвращает справочное дерево регионов, которые поддерживает Вордстат, — id регионов и их названия (label). Эти id подставляются в regionIds/regionMode остальных инструментов, а названия расшифровывают id регионов в их ответах. Дерево большое и стабильное: достаточно запросить его один раз и закешировать.",
       inputSchema: {},
     },
     async () => {

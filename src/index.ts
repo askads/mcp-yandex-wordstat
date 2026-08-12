@@ -18,18 +18,19 @@ import { registerRawTool } from "./tools/raw.js";
  * It is prepended to every session, so keep it dense and factual.
  */
 const INSTRUCTIONS =
-  "Yandex Wordstat is aggregated search-demand statistics from Yandex search: how often a phrase is " +
-  "typed, when and where. It is not Yandex Direct — no campaigns, ads, bids, clicks or spend, and " +
-  "the data is tied to no advertising account. Everything is read-only: the API has no write " +
-  "endpoints, and raw_request is POST-only and cannot leave the Search API host. One call covers " +
-  "one phrase, so comparing N keywords costs N calls against the Yandex Cloud Search API quota — " +
-  "counted per key and shared across every call: don't sweep a keyword list blindly, and reuse what " +
-  "you fetched. The region tree is cached in-process, so re-reading it is free. Only dynamics takes " +
-  "a date range; top_requests and regions are fixed to the last 30 days. Counts are int64 and often " +
-  "arrive as JSON strings — convert before sorting or summing. 429/5xx and network errors are " +
-  "already retried with backoff inside the server, so re-issuing the same call after one will not " +
-  "help. 401/403 means the key lacks the Search API scope or WORDSTAT_FOLDER_ID names the wrong " +
-  "folder — an operator fix, not a bad phrase.";
+  "Яндекс Вордстат — агрегированная статистика поискового спроса в поиске Яндекса: как часто фразу " +
+  "набирают, когда и где. Это не Яндекс Директ: кампаний, объявлений, ставок, кликов и расхода тут " +
+  "нет, а данные не привязаны ни к какому рекламному аккаунту. Всё только на чтение: у API нет " +
+  "эндпоинтов записи, а raw_request работает только методом POST и не может уйти с хоста Search " +
+  "API. Один вызов — одна фраза, поэтому сравнение N ключевых фраз стоит N вызовов из квоты Yandex " +
+  "Cloud Search API — она считается на ключ и общая для всех вызовов: не стоит вслепую прогонять " +
+  "весь список ключевых фраз, а уже полученное лучше переиспользовать. Дерево регионов кешируется " +
+  "в процессе, поэтому перечитывать его бесплатно. Диапазон дат принимает только dynamics; " +
+  "top_requests и regions всегда считают последние 30 дней. Значения count — int64 и часто " +
+  "приходят JSON-строками: перед сортировкой или суммированием их нужно привести к числу. 429, " +
+  "5xx и сетевые ошибки сервер уже повторяет с нарастающими паузами, поэтому повторять тот же " +
+  "вызов после них бесполезно. 401/403 означает, что у ключа нет доступа к Search API или " +
+  "WORDSTAT_FOLDER_ID указывает не на тот каталог, — это чинит оператор, дело не в фразе.";
 
 /** Reads the package version so the server reports its real version to MCP clients. */
 function readVersion(): string {
@@ -52,7 +53,7 @@ async function loadConfigOrExit(telemetry: Telemetry): Promise<WordstatConfig> {
     return loadConfig();
   } catch (err) {
     if (!(err instanceof ConfigError)) throw err;
-    console.error(`Error: ${err.message}`);
+    console.error(`Ошибка: ${err.message}`);
     await telemetry.sendBlocking("startup_failed", { reason: err.reason });
     process.exit(1);
   }
@@ -87,10 +88,10 @@ async function main(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("mcp-yandex-wordstat running on stdio");
+  console.error("mcp-yandex-wordstat работает на stdio");
 }
 
 main().catch((err) => {
-  console.error("Fatal error starting mcp-yandex-wordstat:", err);
+  console.error("Критическая ошибка при запуске mcp-yandex-wordstat:", err);
   process.exit(1);
 });

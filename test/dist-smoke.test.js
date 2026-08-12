@@ -25,7 +25,7 @@ test("dist client rejects foreign-origin paths before sending the API key", asyn
     maxRetries: 0,
   });
 
-  await assert.rejects(() => client.request("POST", "https://example.invalid/steal", {}), /foreign origin/);
+  await assert.rejects(() => client.request("POST", "https://example.invalid/steal", {}), /чужой origin/);
   assert.equal(called, false);
 });
 
@@ -98,6 +98,8 @@ test("dist initialize hands the model non-empty instructions", async () => {
     // Length floor, not a wording match: catches an empty or placeholder string
     // without pinning the test to the prose.
     assert.ok(instructions.trim().length > 200, "instructions must carry real guidance");
+    // The audience is Russian-speaking: the prose must stay localized.
+    assert.match(instructions, /[а-яА-Я]/, "instructions must be in Russian");
   } finally {
     await client.close();
   }

@@ -1,36 +1,36 @@
-# Tools
+# Инструменты
 
-All tools are read-only — the Yandex Wordstat API (Yandex Cloud Search API v2) has
-no write endpoints. Inputs are normalized; the client maps them to the API's wire
-values (`DEVICE_*` / `PERIOD_*` / `REGION_*`) and injects `folderId`.
+Все инструменты работают только на чтение — у Yandex Wordstat API (Yandex Cloud Search
+API v2) нет эндпоинтов на запись. Входные значения нормализованы; клиент сам переводит
+их в вокабуляр API (`DEVICE_*` / `PERIOD_*` / `REGION_*`) и подставляет `folderId`.
 
-## Reports
+## Отчёты
 
-| Tool | Description |
+| Инструмент | Что делает |
 |---|---|
-| `top_requests` | Search demand for a phrase over the last 30 days: the most popular queries that CONTAIN the phrase (`results`) plus semantically RELATED queries (`associations`) and `totalCount`. Optional `regionIds`, `devices`; `numPhrases` (1..2000) sets how many to return. |
-| `dynamics` | How demand changed over time — a series of `{date, count, share}`. `period` sets granularity (`daily`/`weekly`/`monthly`); `fromDate`/`toDate` bound the range as RFC3339 timestamps (`toDate` aligned to the period boundary). Optional `regionIds`, `devices`. |
-| `regions` | Distribution of demand across regions over the last 30 days: `count`, `share` and `affinityIndex` (>100% = above-average interest). `regionMode` groups by `all` / `cities` / `regions`. |
-| `list_regions` | The reference tree of region ids → names. Ids feed `regionIds`/`regionMode`; names decode region ids in responses. Static and cached once per process. |
+| `top_requests` | Поисковый спрос по фразе за последние 30 дней: самые популярные запросы, СОДЕРЖАЩИЕ фразу (`results`), плюс семантически БЛИЗКИЕ запросы (`associations`) и `totalCount`. Необязательные `regionIds`, `devices`; `numPhrases` (1..2000) задаёт количество возвращаемых записей. |
+| `dynamics` | Как менялся спрос во времени — ряд `{date, count, share}`. `period` задаёт детализацию (`daily`/`weekly`/`monthly`); `fromDate`/`toDate` ограничивают диапазон метками времени RFC3339 (`toDate` выравнивается по границе периода). Необязательные `regionIds`, `devices`. |
+| `regions` | Распределение спроса по регионам за последние 30 дней: `count`, `share` и `affinityIndex` (>100% — интерес выше среднего). `regionMode` группирует по `all` / `cities` / `regions`. |
+| `list_regions` | Справочное дерево «id региона → название». Идентификаторы нужны для `regionIds`/`regionMode`, названия расшифровывают id регионов в ответах. Данные статичны и кэшируются один раз на процесс. |
 
-Notes:
-- **Counts can be strings.** Yandex serializes int64 counts as JSON strings — don't assume number.
-- **Region ids:** get them from `list_regions`, e.g. `213` (Moscow), `2` (St. Petersburg).
-- **Devices:** any of `all`, `desktop`, `phone`, `tablet`.
+Примечания:
+- **Количественные поля могут приходить строками.** Яндекс сериализует int64 в JSON-строки — не полагаться на числовой тип.
+- **Идентификаторы регионов:** брать из `list_regions`, например `213` (Москва), `2` (Санкт-Петербург).
+- **Устройства:** любое из `all`, `desktop`, `phone`, `tablet`.
 
-## Escape hatch
+## Универсальный запрос
 
-| Tool | Description |
+| Инструмент | Что делает |
 |---|---|
-| `raw_request` | Call any Yandex Cloud Search API Wordstat path directly (e.g. `v2/wordstat/topRequests`) for endpoints without a dedicated tool. Every Wordstat endpoint is `POST`; `body` is sent as JSON and `folderId` is injected automatically. A `path` that resolves to a foreign origin is rejected (SSRF guard). |
+| `raw_request` | Прямой вызов любого пути Wordstat в Yandex Cloud Search API (например, `v2/wordstat/topRequests`) — для эндпоинтов без отдельного инструмента. Все эндпоинты Wordstat работают по `POST`; `body` отправляется как JSON, `folderId` подставляется автоматически. Если `path` уводит на чужой origin, запрос отклоняется (защита от SSRF). |
 
-## Environment variables
+## Переменные окружения
 
-| Variable | Required | Default | Description |
+| Переменная | Обяз. | По умолчанию | Описание |
 |---|---|---|---|
-| `WORDSTAT_API_KEY` | yes | — | Yandex Cloud API key (Search API), sent as `Api-Key`. Treat it as a secret. |
-| `WORDSTAT_FOLDER_ID` | yes | — | Yandex Cloud folder id, injected into every request body. |
-| `WORDSTAT_LANG` | no | `ru` | `Accept-Language` header. |
-| `WORDSTAT_API_BASE` | no | `https://searchapi.api.cloud.yandex.net` | API root host override. |
-| `WORDSTAT_TIMEOUT_MS` | no | `60000` | Per-request timeout, ms. |
-| `WORDSTAT_MAX_RETRIES` | no | `3` | Retries on transient errors (429, 5xx, network). |
+| `WORDSTAT_API_KEY` | да | — | API-ключ Yandex Cloud (Search API), передаётся как `Api-Key`. Хранить как секрет. |
+| `WORDSTAT_FOLDER_ID` | да | — | Идентификатор каталога Yandex Cloud, подставляется в тело каждого запроса. |
+| `WORDSTAT_LANG` | нет | `ru` | Заголовок `Accept-Language`. |
+| `WORDSTAT_API_BASE` | нет | `https://searchapi.api.cloud.yandex.net` | Переопределение корневого хоста API. |
+| `WORDSTAT_TIMEOUT_MS` | нет | `60000` | Таймаут запроса, мс. |
+| `WORDSTAT_MAX_RETRIES` | нет | `3` | Повторы при временных ошибках (429, 5xx, сеть). |

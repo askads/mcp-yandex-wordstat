@@ -234,7 +234,7 @@ test("request() aborts and reports a timeout when the request hangs", async () =
     })) as typeof fetch;
   try {
     const client = makeClient({ timeoutMs: 10, maxRetries: 0 });
-    await assert.rejects(() => client.topRequests({ phrase: "x" }), /timed out after 10ms/);
+    await assert.rejects(() => client.topRequests({ phrase: "x" }), /превысил таймаут 10 мс/);
   } finally {
     globalThis.fetch = original;
   }
@@ -244,7 +244,7 @@ test("request() rejects an absolute path (SSRF) and never fetches a foreign orig
   for (const evil of ["https://evil.example/steal", "http://evil.example/x", "\\\\evil.example/x"]) {
     const mock = mockFetch(() => new Response("{}", { status: 200 }));
     try {
-      await assert.rejects(() => makeClient().request("POST", evil, {}), /foreign origin/);
+      await assert.rejects(() => makeClient().request("POST", evil, {}), /чужой origin/);
       assert.equal(mock.calls.length, 0, `must not fetch for ${JSON.stringify(evil)}`);
     } finally {
       mock.restore();

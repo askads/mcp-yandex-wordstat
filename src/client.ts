@@ -95,7 +95,7 @@ export class WordstatClient {
       return { res, text };
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
-        throw new Error(`Request to "${label}" timed out after ${this.timeoutMs}ms`);
+        throw new Error(`Запрос к "${label}" превысил таймаут ${this.timeoutMs} мс`);
       }
       throw err;
     } finally {
@@ -122,7 +122,7 @@ export class WordstatClient {
     // raw_request) so the Api-Key header can never leak to another host.
     const url = new URL(path.replace(/^\//, ""), this.base);
     if (url.origin !== new URL(this.base).origin) {
-      throw new Error(`raw_request path must be a relative API path (resolved to foreign origin ${url.origin})`);
+      throw new Error(`path у raw_request должен быть относительным путём API (получился чужой origin ${url.origin})`);
     }
     const target = url.toString();
 

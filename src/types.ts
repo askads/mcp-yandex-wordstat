@@ -53,7 +53,7 @@ export class WordstatError extends Error {
 
 /** Turns a parsed Search API error body into a short, readable message. */
 function formatErrorBody(body: unknown): string {
-  if (body == null) return "(no body)";
+  if (body == null) return "(тело ответа пустое)";
   if (typeof body === "string") return body.slice(0, 500);
   if (typeof body !== "object") return String(body);
   const obj = body as Record<string, unknown>;

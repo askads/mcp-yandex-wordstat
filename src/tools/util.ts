@@ -18,7 +18,7 @@ export const rfc3339Date = () =>
     .string()
     .regex(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/,
-      "Must be an RFC3339 timestamp, e.g. 2026-01-01T00:00:00Z",
+      "Должна быть метка времени RFC3339, например 2026-01-01T00:00:00Z",
     );
 
 /** Wraps a value as a compact-JSON tool result (compact: the consumer is an LLM). */
@@ -32,7 +32,7 @@ export function fail(err: unknown): CallToolResult {
   // Surface the underlying cause (e.g. the network error behind a timeout) — no
   // secrets live in cause, and it makes failures far easier to diagnose.
   if (err instanceof Error && err.cause instanceof Error) message += ` (${err.cause.message})`;
-  return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
+  return { content: [{ type: "text", text: `Ошибка: ${message}` }], isError: true };
 }
 
 /**

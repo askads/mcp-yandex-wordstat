@@ -48,7 +48,7 @@ test("raw_request rejects an absolute path as an isError result, without fetchin
     try {
       const res = await tools.raw_request({ path: evil, body: {} });
       assert.equal(res.isError, true, `${JSON.stringify(evil)} should be isError`);
-      assert.match(res.content[0].text, /foreign origin/);
+      assert.match(res.content[0].text, /чужой origin/);
       assert.equal(calls.length, 0, `must not fetch for ${JSON.stringify(evil)}`);
     } finally {
       restore();

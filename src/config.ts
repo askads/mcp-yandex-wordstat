@@ -34,11 +34,11 @@ function die(message: string, reason: string): never {
 export function loadConfig(): WordstatConfig {
   const token = process.env.WORDSTAT_API_KEY;
   if (!token) {
-    die("WORDSTAT_API_KEY is required (Yandex Cloud Search API key).", "missing_token");
+    die("Требуется WORDSTAT_API_KEY (API-ключ Yandex Cloud Search API).", "missing_token");
   }
   const folderId = process.env.WORDSTAT_FOLDER_ID;
   if (!folderId) {
-    die("WORDSTAT_FOLDER_ID is required (Yandex Cloud folder id).", "missing_folder_id");
+    die("Требуется WORDSTAT_FOLDER_ID (id каталога Yandex Cloud).", "missing_folder_id");
   }
 
   const timeoutMs = Number(process.env.WORDSTAT_TIMEOUT_MS);

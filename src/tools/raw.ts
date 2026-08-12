@@ -7,18 +7,18 @@ export function registerRawTool(server: McpServer, client: WordstatClient): void
   server.registerTool(
     "raw_request",
     {
-      title: "Raw Wordstat API call",
+      title: "Прямой вызов API Вордстата",
       // The Wordstat API is read-only (no write endpoints), so this stays a read hint.
       annotations: READ_ONLY,
       description:
-        'Escape hatch to call any Yandex Cloud Search API Wordstat path directly, for endpoints without a dedicated tool, e.g. "v2/wordstat/topRequests". Every Wordstat endpoint is POST; `body` is sent as JSON (folderId is injected automatically).',
+        'Универсальный запрос: обращается напрямую к любому пути Wordstat в Yandex Cloud Search API — для эндпоинтов, у которых нет отдельного инструмента, например "v2/wordstat/topRequests". Все эндпоинты Вордстата работают методом POST; `body` отправляется как JSON (folderId подставляется автоматически).',
       inputSchema: {
         path: z
           .string()
           .min(1)
-          .describe('API path, e.g. "v2/wordstat/dynamics".'),
-        method: z.enum(["POST"]).optional().describe("HTTP method. Only POST is supported; defaults to POST."),
-        body: z.record(z.any()).optional().describe("JSON request body."),
+          .describe('Путь API, например "v2/wordstat/dynamics".'),
+        method: z.enum(["POST"]).optional().describe("HTTP-метод. Поддерживается только POST, он же по умолчанию."),
+        body: z.record(z.any()).optional().describe("Тело запроса в формате JSON."),
       },
     },
     async ({ path, method, body }) => {

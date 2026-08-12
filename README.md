@@ -38,7 +38,7 @@ MCP-сервер для **Yandex Wordstat (Яндекс Вордстат)**: с�
   выше/ниже среднего); режимы `all` / `cities` / `regions`.
 - **Справочник регионов** — `list_regions`: дерево `id → name` для фильтров и расшифровки регионов.
 - **Универсальный `raw_request`** — прямой вызов любого пути API.
-- **Yandex Cloud Search API v2** — auth, endpoints и схемы скрыты за нормализованными инструментами.
+- **Yandex Cloud Search API v2** — авторизация, эндпоинты и схемы скрыты за нормализованными инструментами.
 - **Устойчивость** — ретраи на 429/5xx с бэкоффом и таймаут запроса.
 
 ## Примеры запросов
@@ -144,7 +144,7 @@ claude mcp add yandex-wordstat \
 ## Получение доступа
 
 1. Создайте сервисный аккаунт с ролью `search-api.webSearch.user` и получите для него
-   API-ключ со scope `yc.search-api.execute` — см.
+   API-ключ с областью действия `yc.search-api.execute` — см.
    [документацию AI Studio](https://yandex.cloud/ru/docs/ai-studio/operations/get-api-key).
 2. Узнайте `folderId` — идентификатор каталога виден в [консоли Yandex Cloud](https://console.yandex.cloud/) на странице каталога (и в её URL).
 3. Запишите ключ в `WORDSTAT_API_KEY`, каталог — в `WORDSTAT_FOLDER_ID`.
@@ -158,7 +158,7 @@ claude mcp add yandex-wordstat \
 | `WORDSTAT_API_KEY` | да | — | API-ключ Yandex Cloud (Search API). |
 | `WORDSTAT_FOLDER_ID` | да | — | Идентификатор каталога Yandex Cloud. |
 | `WORDSTAT_LANG` | нет | `ru` | Заголовок `Accept-Language`. |
-| `WORDSTAT_API_BASE` | нет | `https://searchapi.api.cloud.yandex.net` | Корень API (override). |
+| `WORDSTAT_API_BASE` | нет | `https://searchapi.api.cloud.yandex.net` | Корень API (переопределение). |
 | `WORDSTAT_TIMEOUT_MS` | нет | `60000` | Таймаут запроса, мс. |
 | `WORDSTAT_MAX_RETRIES` | нет | `3` | Повторы при 429/5xx. |
 
@@ -169,7 +169,7 @@ claude mcp add yandex-wordstat \
 
 ## Ограничения
 
-- **Read-only.** У Wordstat API нет изменяющих операций — сервер только читает.
+- **Только чтение.** У Wordstat API нет изменяющих операций — сервер лишь читает данные.
 - **Общая квота.** Лимит (по биллингу Yandex Cloud Search API) считается на один ключ, общий
   для всех вызовов. Кэшируйте `list_regions` и ответы по фразам, не гоните частоту.
 
