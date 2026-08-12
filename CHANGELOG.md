@@ -7,6 +7,15 @@
 
 ## [Unreleased]
 
+## [2.2.2] — 2026-08-12
+
+### Добавлено
+
+- Инструкции сервера. В ответе MCP `initialize` теперь едет короткая справка для вызывающей
+  модели: чем этот API является и чем не является, чего он не умеет, а также квоты, правила
+  повторов и обманчивые ошибки, влияющие на то, как им пользоваться. Раньше это знание жило
+  только в README, который модель не читает.
+
 ## [2.2.0] — 2026-08-07
 
 ### Добавлено
@@ -108,7 +117,8 @@
 - Ретраи на 429/5xx с бэкоффом (учёт `Retry-After`), таймаут запроса,
   `WordstatError(status, body)`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.2.2...HEAD
+[2.2.2]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.2.2
 [2.2.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.2.0
 [2.1.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.1.0
 [2.0.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.0.0

@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 import { WordstatClient } from "../dist/client.js";
 import { registerRawTool } from "../dist/tools/raw.js";
@@ -65,4 +69,36 @@ test("dist registers the expected read-only tools", () => {
     "regions",
     "top_requests",
   ]);
+});
+
+test("dist initialize hands the model non-empty instructions", async () => {
+  // Real handshake against the built server over stdio: instructions live in the
+  // initialize result, so only a live session proves they survived the build.
+  // Dummy credentials are enough — initialize touches no API; telemetry off so
+  // the test stays offline.
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [fileURLToPath(new URL("../dist/index.js", import.meta.url))],
+    stderr: "ignore",
+    env: {
+      ...process.env,
+      WORDSTAT_API_KEY: "test-key",
+      WORDSTAT_FOLDER_ID: "test-folder",
+      ASKADS_TELEMETRY: "0",
+    },
+  });
+  const client = new Client({ name: "dist-smoke", version: "1.0.0" });
+
+  try {
+    await client.connect(transport);
+
+    assert.equal(client.getServerVersion()?.name, "mcp-yandex-wordstat");
+    const instructions = client.getInstructions();
+    assert.equal(typeof instructions, "string");
+    // Length floor, not a wording match: catches an empty or placeholder string
+    // without pinning the test to the prose.
+    assert.ok(instructions.trim().length > 200, "instructions must carry real guidance");
+  } finally {
+    await client.close();
+  }
 });
