@@ -1,92 +1,119 @@
-# Yandex Wordstat MCP
+# Яндекс Вордстат MCP
 
 [![npm](https://img.shields.io/npm/v/mcp-yandex-wordstat)](https://www.npmjs.com/package/mcp-yandex-wordstat)
 [![CI](https://github.com/askads/mcp-yandex-wordstat/actions/workflows/ci.yml/badge.svg)](https://github.com/askads/mcp-yandex-wordstat/actions/workflows/ci.yml)
 [![Glama](https://glama.ai/mcp/servers/askads/mcp-yandex-wordstat/badges/score.svg)](https://glama.ai/mcp/servers/askads/mcp-yandex-wordstat)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-MCP-сервер для **Yandex Wordstat (Яндекс Вордстат)**: спрашивайте статистику поискового
-спроса — частотность, похожие запросы, сезонность и география — из Claude, Cursor, Codex и
-других AI-клиентов на естественном языке.
+**Яндекс Вордстат MCP** подключает AI-приложение к статистике поискового спроса Яндекса. Спросите, как часто ищут фразу, в какие месяцы интерес растёт и в каких городах тема популярнее, — ассистент соберёт данные Вордстата и объяснит результат. Сервер работает через Yandex Cloud Search API, поэтому не требует доступа к рекламному кабинету Директа.
 
-Ассистент сам подбирает ключевые слова, оценивает спрос и его динамику и сравнивает регионы —
-то, что в вебе Вордстата приходится листать по трём вкладкам вручную.
+- **Пять инструментов.** Топ и похожие запросы, динамика спроса, распределение по регионам, справочник регионов и технический запрос к API.
+- **Только чтение.** API Вордстата не создаёт кампании, объявления, ключевые фразы и другие объекты.
+- **Спрос и сезонность.** Топ запросов и регионы показывают последние 30 дней; динамика строится по дням, неделям или месяцам за нужный период.
+- **Регион и устройство.** Отчёты можно сузить до региона и сравнить спрос на компьютерах, телефонах и планшетах.
+- **Без OAuth Директа.** Нужны API-ключ и ID каталога Yandex Cloud для Search API.
 
-<img src="docs/demo.gif" alt="Демо: один вопрос — ассистент вызывает top_requests, dynamics и regions и собирает частотность, сезонность и города-лидеры спроса" width="1000">
+Начните с безопасного запроса:
 
-<sub>Настоящая MCP-сессия: реальный сервер, хендшейк и tools/call по stdio через официальный SDK; ответы Yandex Cloud Search API (Wordstat) — записанные фикстуры (<a href="docs/demo">docs/demo</a>), поэтому демо воспроизводится без ключа и сети — <a href="docs/demo.tape">vhs docs/demo.tape</a>.</sub>
+> Сколько в месяц ищут «купить велосипед» и какие есть похожие запросы?
+
+[Подключить сервер](#быстрый-старт) · [Посмотреть сценарии](#что-можно-поручить) · [Открыть техническую документацию](#техническая-документация)
+
+---
+
+## Увидеть работу за минуту
+
+> **Вы:** Сколько в месяц ищут «ремонт квартир» и какие есть похожие запросы?
+>
+> **Ассистент:** Показывает общий спрос за последние 30 дней, популярные запросы с этой фразой и семантически близкие темы.
+>
+> **Вы:** Покажи сезонность за год и города, где интерес к этой теме выше среднего.
+>
+> **Ассистент:** Строит динамику по месяцам и распределение по городам с индексом интереса. Никакие данные не меняются: инструменты сервера работают только на чтение.
+
+<img src="docs/demo.gif" alt="Демонстрация: ассистент собирает частотность, сезонность и города-лидеры спроса" width="1000">
+
+<sub>Демонстрация использует записанные ответы Yandex Cloud Search API, поэтому воспроизводится без ключа и сети. Исходники: <a href="docs/demo">docs/demo</a> и <a href="docs/demo.tape">docs/demo.tape</a>.</sub>
+
+## Содержание
+
+- [Быстрый старт](#быстрый-старт)
+- [Что можно поручить](#что-можно-поручить)
+- [Как читать данные спроса](#как-читать-данные-спроса)
+- [Как получить доступ](#как-получить-доступ)
+- [Что может изменить данные](#что-может-изменить-данные)
+- [Данные, лимиты и работа в фоне](#данные-лимиты-и-работа-в-фоне)
+- [Техническая документация](#техническая-документация)
+- [Поддержка](#поддержка)
 
 ## Быстрый старт
 
-1. [Получите API-ключ](#получение-доступа) Yandex Cloud — тот же тип ключа, что для YandexGPT.
-2. Добавьте сервер — например, в Claude Code ([другие клиенты](#установка)):
+Нужны Node.js 20 или новее, API-ключ Yandex Cloud для Search API и ID каталога Yandex Cloud.
 
-   ```bash
-   claude mcp add yandex-wordstat \
-     -e WORDSTAT_API_KEY=ваш_ключ -e WORDSTAT_FOLDER_ID=ваш_folder \
-     -- npx -y mcp-yandex-wordstat@latest
-   ```
-
-3. Спросите ассистента: «Сколько в месяц ищут "купить велосипед" и какие есть похожие запросы?»
-
-## Что умеет
-
-- **Топ и похожие запросы** — `top_requests`: популярные запросы с фразой + семантически
-  близкие (`associations`) и общий объём за 30 дней.
-- **Динамика** — `dynamics`: ряд `{date, count, share}` по дням/неделям/месяцам — сезонность и тренд.
-- **Регионы** — `regions`: распределение спроса по регионам с `affinityIndex` (где интерес
-  выше/ниже среднего); режимы `all` / `cities` / `regions`.
-- **Справочник регионов** — `list_regions`: дерево `id → name` для фильтров и расшифровки регионов.
-- **Универсальный `raw_request`** — прямой вызов любого пути API.
-- **Yandex Cloud Search API v2** — авторизация, эндпоинты и схемы скрыты за нормализованными инструментами.
-- **Устойчивость** — ретраи на 429/5xx с бэкоффом и таймаут запроса.
-
-## Примеры запросов
-
-Попросите ассистента на русском — например:
-
-- «Сколько в месяц ищут "купить велосипед" и какие есть похожие запросы?»
-- «Покажи сезонность спроса на "лыжи" по месяцам за год»
-- «В каких городах выше всего интерес к "доставка пиццы"?»
-- «Подбери ключи вокруг "ремонт квартир" с частотностью»
-
-## Доступ к API
-
-Сервер работает через **Yandex Cloud Search API v2** (хост `searchapi.api.cloud.yandex.net`,
-авторизация API-ключом Yandex Cloud). Данные Вордстата — публичная агрегированная статистика
-спроса (не привязана к рекламному аккаунту), поэтому один API-ключ обслуживает весь сервер.
-Открывается self-serve, тем же ключом, что и YandexGPT — заявок и активных кампаний не нужно.
-
-> **Старый отдельный API Вордстата (`api.wordstat.yandex.net`, OAuth) больше недоступен.** Яндекс
-> перенёс эту функциональность в Yandex Search API на платформе Yandex Cloud (это и есть бэкенд
-> сервера); отдельной осталась только веб-версия на [wordstat.yandex.ru](https://wordstat.yandex.ru).
-> Поддержка флейвора `oauth` удалена в версии 2.0.0.
-
-## Установка
+1. [Получите доступ](#как-получить-доступ) и добавьте сервер в AI-приложение — инструкции для пяти приложений ниже.
+2. Спросите: «Сколько в месяц ищут „купить велосипед“ и какие есть похожие запросы?»
 
 <details open>
-<summary><b>Claude Code</b></summary>
+<summary><strong>Codex</strong></summary>
+
+<br>
+
+**Через интерфейс приложения:**
+
+1. Откройте **Settings → Plugins → MCP servers**.
+2. Нажмите **Add server**.
+3. Добавьте команду запуска `npx -y mcp-yandex-wordstat@latest` и переменные окружения `WORDSTAT_API_KEY`, `WORDSTAT_FOLDER_ID`.
+
+**Через командную строку:**
 
 ```bash
-claude mcp add yandex-wordstat \
-  -e WORDSTAT_API_KEY=ваш_ключ -e WORDSTAT_FOLDER_ID=ваш_folder \
+codex mcp add yandex-wordstat \
+  --env WORDSTAT_API_KEY=ваш_ключ \
+  --env WORDSTAT_FOLDER_ID=ваш_folder_id \
   -- npx -y mcp-yandex-wordstat@latest
 ```
 
-Либо через маркетплейс плагинов — токен спросится диалогом при включении и сохранится
-в системном keychain (не в конфиге открытым текстом):
+Проверьте подключение:
 
+```bash
+codex mcp list
 ```
-/plugin marketplace add askads/claude-plugins
-/plugin install yandex-wordstat@askads
-```
+
+[Официальная инструкция Codex](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
 
 </details>
 
 <details>
-<summary><b>Claude Desktop</b></summary>
+<summary><strong>Claude Code</strong></summary>
 
-`claude_desktop_config.json` — macOS `~/Library/Application Support/Claude/`, Windows `%APPDATA%\Claude\`
+<br>
+
+```bash
+claude mcp add \
+  --env WORDSTAT_API_KEY=ваш_ключ \
+  --env WORDSTAT_FOLDER_ID=ваш_folder_id \
+  --transport stdio \
+  --scope user \
+  yandex-wordstat \
+  -- npx -y mcp-yandex-wordstat@latest
+```
+
+Проверьте сервер:
+
+```bash
+claude mcp list
+```
+
+[Документация Claude Code](https://docs.anthropic.com/en/docs/claude-code/mcp)
+
+</details>
+
+<details>
+<summary><strong>Claude Desktop</strong></summary>
+
+<br>
+
+Откройте **Settings → Developer → Edit Config** и добавьте сервер в `claude_desktop_config.json`:
 
 ```json
 {
@@ -94,18 +121,25 @@ claude mcp add yandex-wordstat \
     "yandex-wordstat": {
       "command": "npx",
       "args": ["-y", "mcp-yandex-wordstat@latest"],
-      "env": { "WORDSTAT_API_KEY": "ваш_ключ", "WORDSTAT_FOLDER_ID": "ваш_folder" }
+      "env": {
+        "WORDSTAT_API_KEY": "ваш_ключ",
+        "WORDSTAT_FOLDER_ID": "ваш_folder_id"
+      }
     }
   }
 }
 ```
 
+Если **Edit Config** недоступна, отредактируйте `~/Library/Application Support/Claude/claude_desktop_config.json` на macOS или `%APPDATA%\Claude\claude_desktop_config.json` на Windows.
+
 </details>
 
 <details>
-<summary><b>Cursor</b></summary>
+<summary><strong>Cursor</strong></summary>
 
-`~/.cursor/mcp.json` (или `.cursor/mcp.json` в проекте)
+<br>
+
+Для всех проектов создайте `~/.cursor/mcp.json`; только для текущего проекта — `.cursor/mcp.json`:
 
 ```json
 {
@@ -113,18 +147,25 @@ claude mcp add yandex-wordstat \
     "yandex-wordstat": {
       "command": "npx",
       "args": ["-y", "mcp-yandex-wordstat@latest"],
-      "env": { "WORDSTAT_API_KEY": "ваш_ключ", "WORDSTAT_FOLDER_ID": "ваш_folder" }
+      "env": {
+        "WORDSTAT_API_KEY": "ваш_ключ",
+        "WORDSTAT_FOLDER_ID": "ваш_folder_id"
+      }
     }
   }
 }
 ```
 
+[Документация Cursor](https://docs.cursor.com/context/model-context-protocol)
+
 </details>
 
 <details>
-<summary><b>VS Code</b></summary>
+<summary><strong>VS Code</strong></summary>
 
-`.vscode/mcp.json` — ключ `servers` (не `mcpServers`)
+<br>
+
+Откройте палитру команд и выполните **MCP: Open User Configuration**. Добавьте в `mcp.json`:
 
 ```json
 {
@@ -133,63 +174,90 @@ claude mcp add yandex-wordstat \
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "mcp-yandex-wordstat@latest"],
-      "env": { "WORDSTAT_API_KEY": "ваш_ключ", "WORDSTAT_FOLDER_ID": "ваш_folder" }
+      "env": {
+        "WORDSTAT_API_KEY": "${input:wordstat_api_key}",
+        "WORDSTAT_FOLDER_ID": "${input:wordstat_folder_id}"
+      }
     }
-  }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "wordstat_api_key",
+      "description": "API-ключ Yandex Cloud",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "wordstat_folder_id",
+      "description": "ID каталога Yandex Cloud"
+    }
+  ]
 }
 ```
 
+Проверьте запуск командой **MCP: List Servers**.
+
+[Документация VS Code](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
+
 </details>
 
-## Получение доступа
+## Что можно поручить
 
-1. Создайте сервисный аккаунт с ролью `search-api.webSearch.user` и получите для него
-   API-ключ с областью действия `yc.search-api.execute` — см.
-   [документацию AI Studio](https://yandex.cloud/ru/docs/ai-studio/operations/get-api-key).
-2. Узнайте `folderId` — идентификатор каталога виден в [консоли Yandex Cloud](https://console.yandex.cloud/) на странице каталога (и в её URL).
-3. Запишите ключ в `WORDSTAT_API_KEY`, каталог — в `WORDSTAT_FOLDER_ID`.
+### Подобрать и оценить спрос
 
-⚠️ Ключ хранится **открытым текстом** в конфиге клиента — относитесь как к паролю.
+- «Сколько раз за месяц ищут эту фразу и какие похожие запросы встречаются?»
+- «Подбери запросы вокруг „доставка пиццы“ с их частотностью».
+- «Покажи запросы, содержащие мою фразу, отдельно от семантически похожих».
 
-## Настройка
+### Понять сезонность
 
-| Переменная | Обяз. | По умолчанию | Описание |
-|---|---|---|---|
-| `WORDSTAT_API_KEY` | да | — | API-ключ Yandex Cloud (Search API). |
-| `WORDSTAT_FOLDER_ID` | да | — | Идентификатор каталога Yandex Cloud. |
-| `WORDSTAT_LANG` | нет | `ru` | Заголовок `Accept-Language`. |
-| `WORDSTAT_API_BASE` | нет | `https://searchapi.api.cloud.yandex.net` | Корень API (переопределение). |
-| `WORDSTAT_TIMEOUT_MS` | нет | `60000` | Таймаут запроса, мс. |
-| `WORDSTAT_MAX_RETRIES` | нет | `3` | Повторы при 429/5xx. |
+- «Покажи спрос на „лыжи“ по месяцам за год».
+- «В какие недели спрос на эту услугу растёт или падает?»
+- «Сравни динамику запроса на телефонах и компьютерах».
 
-## Требования
+### Сравнить регионы
 
-- Node.js 20+ (запускается через `npx`, отдельная установка не нужна).
-- Доступ к Yandex Cloud Search API — см. [Получение доступа](#получение-доступа).
+- «В каких городах интерес к „ремонту квартир“ выше среднего?»
+- «Сравни спрос в Москве и Санкт-Петербурге».
+- «Найди ID нужного региона и сузь следующий отчёт до него».
 
-## Ограничения
+## Как читать данные спроса
 
-- **Только чтение.** У Wordstat API нет изменяющих операций — сервер лишь читает данные.
-- **Общая квота.** Лимит (по биллингу Yandex Cloud Search API) считается на один ключ, общий
-  для всех вызовов. Кэшируйте `list_regions` и ответы по фразам, не гоните частоту.
+`top_requests` показывает популярные запросы, которые содержат заданную фразу, и семантически близкие запросы. Общий `totalCount` относится к последним 30 дням.
 
-## Документация
+`dynamics` возвращает ряд `{date, count, share}` с дневной, недельной или месячной детализацией. `regions` распределяет спрос за последние 30 дней по регионам, а `affinityIndex` выше 100% означает интерес выше среднего. Значения счётчиков могут приходить строками: Яндекс передаёт большие целые числа в JSON в таком виде.
 
-- [Все инструменты](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/TOOLS.md) — полный список с описанием.
-- [Разработка](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/DEVELOPMENT.md) — сборка, тесты, smoke-проверка.
-- [Публикация](https://github.com/askads/mcp-yandex-wordstat/blob/main/docs/PUBLISHING.md) — релиз и листинг в каталогах MCP.
+Один вызов строит данные только для одной фразы. Для большого списка ключевых слов лучше сначала сузить список, а не запускать все запросы подряд: квота Yandex Cloud Search API общая для одного ключа.
 
-## Смотрите также
+## Как получить доступ
 
-- **[Ask Ads](https://askads.ru)** — чат-аналитик и «Сторож» рекламных кабинетов от авторов
-  этого сервера: алерты о сливах бюджета и поломках трекинга — в Telegram.
-- **[askads/claude-plugins](https://github.com/askads/claude-plugins)** — маркетплейс плагинов
-  Claude: серверы Ask Ads ставятся одной командой, токены спрашиваются при включении.
+1. В Yandex Cloud создайте сервисный аккаунт с ролью `search-api.webSearch.user`.
+2. Выпустите для него API-ключ со scope `yc.search-api.execute` — шаги описаны в [документации AI Studio](https://yandex.cloud/ru/docs/ai-studio/operations/get-api-key).
+3. Найдите ID каталога (`folderId`) в [консоли Yandex Cloud](https://console.yandex.cloud/) на странице каталога и в URL страницы.
+4. Передайте ключ как `WORDSTAT_API_KEY`, а каталог как `WORDSTAT_FOLDER_ID`.
+
+Сервер обращается к Yandex Cloud Search API v2. Старый отдельный Wordstat API с OAuth не используется. API-ключ хранится в конфигурации MCP-клиента открытым текстом — относитесь к нему как к паролю.
+
+## Что может изменить данные
+
+Ничего в Яндекс Вордстате. Все пять инструментов, включая `raw_request`, работают только на чтение. Технически API использует `POST`, но у Wordstat нет эндпоинтов на запись; сервер дополнительно не позволяет произвольному запросу уйти на другой хост.
+
+## Данные, лимиты и работа в фоне
+
+- **Агрегированные данные.** Сервер получает статистику поискового спроса, а не данные конкретного рекламного кабинета.
+- **Кэш справочника регионов.** В долгоживущем процессе дерево регионов загружается один раз и переиспользуется в следующих запросах.
+- **Повторы при временных ошибках.** Таймаут одного запроса — 60 секунд. Сервер делает до трёх повторов после `429`, `5xx`, сетевой ошибки или тайм-аута; учитывает `Retry-After`, а задержка не превышает 30 секунд.
+- **Нет фонового наблюдения.** Сервер работает, когда его вызывает AI-приложение. Если приложение поддерживает задания по расписанию, в нём можно настроить периодический отчёт по выбранным фразам.
+- **Анонимная телеметрия.** По умолчанию сервер отправляет случайный идентификатор установки, имя события или инструмента, версии сервера, Node.js, ОС и AI-клиента. В неё не попадают API-ключ, аргументы инструментов, ваши сообщения, данные спроса и значения переменных окружения. Отключить её для MCP-серверов Ask Ads: `ASKADS_TELEMETRY=0`.
+
+## Техническая документация
+
+- [Все инструменты и параметры](./docs/TOOLS.md)
+- [Документация по разработке](./docs/DEVELOPMENT.md)
+- [Документация по публикации](./docs/PUBLISHING.md)
+- [Документация Yandex Cloud Search API](https://yandex.cloud/ru/docs/search-api/)
 
 ## Поддержка
 
-Вопросы, идеи и доработки — пишите в Telegram: [@gistrec](http://t.me/gistrec).
-
-## Лицензия
-
-MIT — см. [LICENSE](./LICENSE).
+Нашли ошибку или не хватает сценария? [Создайте issue](https://github.com/askads/mcp-yandex-wordstat/issues) или напишите в [Telegram](http://t.me/gistrec).
