@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { WordstatClient } from "./client.js";
+import { CredentialsError } from "./types.js";
 import type { WordstatConfig } from "./types.js";
 
 type Call = { url: string; method: string; auth: unknown; body: Record<string, unknown> | undefined };
@@ -258,6 +259,70 @@ test("request() still accepts a relative API path", async () => {
     const result = await makeClient().request("POST", "v2/wordstat/topRequests", {});
     assert.deepEqual(result, { ok: true });
     assert.equal(mock.calls[0].url, `${BASE}/v2/wordstat/topRequests`);
+  } finally {
+    mock.restore();
+  }
+});
+
+// --- Missing credentials (degraded start) ---
+
+// The exact startup-era texts, relayed verbatim at call time — pinned so a
+// reworded message does not silently change what the model tells the user.
+const MISSING_TOKEN_TEXT = "Требуется WORDSTAT_API_KEY (API-ключ Yandex Cloud Search API).";
+const MISSING_FOLDER_TEXT = "Требуется WORDSTAT_FOLDER_ID (id каталога Yandex Cloud).";
+
+/** Asserts the rejection is a CredentialsError carrying `expected` verbatim. */
+function credentialsErrorWith(expected: string): (err: unknown) => boolean {
+  return (err: unknown) => {
+    assert.ok(err instanceof CredentialsError, "must be a CredentialsError");
+    assert.equal((err as Error).name, "CredentialsError");
+    assert.ok(
+      (err as Error).message.includes(expected),
+      `message must carry the exact text, got: ${(err as Error).message}`,
+    );
+    return true;
+  };
+}
+
+test("request() without an api key throws CredentialsError; fetch is never called", async () => {
+  const mock = mockFetch(() => new Response("{}", { status: 200 }));
+  try {
+    const client = new WordstatClient({ folderId: "fld-1", apiBase: BASE, lang: "ru" });
+    await assert.rejects(() => client.topRequests({ phrase: "x" }), credentialsErrorWith(MISSING_TOKEN_TEXT));
+    // Not transport trouble: the retry/backoff branch — and fetch itself —
+    // must never run for a configuration problem.
+    assert.equal(mock.calls.length, 0, "fetch must not be called without credentials");
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() without a folder id throws CredentialsError; fetch is never called", async () => {
+  const mock = mockFetch(() => new Response("{}", { status: 200 }));
+  try {
+    const client = new WordstatClient({ token: "T", apiBase: BASE, lang: "ru" });
+    await assert.rejects(() => client.topRequests({ phrase: "x" }), credentialsErrorWith(MISSING_FOLDER_TEXT));
+    assert.equal(mock.calls.length, 0, "fetch must not be called without credentials");
+  } finally {
+    mock.restore();
+  }
+});
+
+test("request() with neither credential names both variables in one message", async () => {
+  const mock = mockFetch(() => new Response("{}", { status: 200 }));
+  try {
+    const client = new WordstatClient({ apiBase: BASE, lang: "ru" });
+    await assert.rejects(
+      () => client.topRequests({ phrase: "x" }),
+      (err: unknown) => {
+        assert.ok(err instanceof CredentialsError, "must be a CredentialsError");
+        const message = (err as Error).message;
+        assert.match(message, /WORDSTAT_API_KEY/);
+        assert.match(message, /WORDSTAT_FOLDER_ID/);
+        return true;
+      },
+    );
+    assert.equal(mock.calls.length, 0, "fetch must not be called without credentials");
   } finally {
     mock.restore();
   }

@@ -1,5 +1,5 @@
 import type { Device, Period, RegionMode, WordstatConfig } from "./types.js";
-import { WordstatError } from "./types.js";
+import { CredentialsError, WordstatError } from "./types.js";
 
 export type HttpMethod = "GET" | "POST";
 
@@ -44,6 +44,31 @@ function mapPeriod(p: Period): string {
 /** Maps a normalized region-distribution mode to the API's wire value. */
 function mapRegionMode(m: RegionMode): string {
   return { all: "REGION_ALL", cities: "REGION_CITIES", regions: "REGION_REGIONS" }[m];
+}
+
+/**
+ * Call-time texts for missing credentials — formerly the startup errors that
+ * killed the process before the MCP handshake, preserved verbatim (pinned in
+ * client.test.ts). The message is the product: it is what the calling model
+ * relays to the user, so it names the variable to set and says the server
+ * needs a restart — there is no in-chat login for an API key.
+ */
+const MISSING_TOKEN_TEXT = "Требуется WORDSTAT_API_KEY (API-ключ Yandex Cloud Search API).";
+const MISSING_FOLDER_TEXT = "Требуется WORDSTAT_FOLDER_ID (id каталога Yandex Cloud).";
+const MISSING_BOTH_TEXT =
+  "Требуются WORDSTAT_API_KEY (API-ключ Yandex Cloud Search API) и WORDSTAT_FOLDER_ID (id каталога Yandex Cloud).";
+
+/** The full CredentialsError message for this config, or undefined when configured. */
+function missingCredentialsMessage(config: WordstatConfig): string | undefined {
+  const noToken = !config.token;
+  const noFolder = !config.folderId;
+  if (!noToken && !noFolder) return undefined;
+  const what = noToken && noFolder ? MISSING_BOTH_TEXT : noToken ? MISSING_TOKEN_TEXT : MISSING_FOLDER_TEXT;
+  const fix =
+    " Это не сбой сети — повторный вызов не поможет: задайте " +
+    (noToken && noFolder ? "переменные окружения" : "переменную окружения") +
+    " в конфигурации MCP-клиента и перезапустите сервер.";
+  return what + fix;
 }
 
 export class WordstatClient {
@@ -110,6 +135,13 @@ export class WordstatClient {
    * {@link WordstatError}.
    */
   async request<T = unknown>(method: HttpMethod, path: string, body?: Record<string, unknown>): Promise<T> {
+    // A missing credential is rejected before the request is built, retried or
+    // sent: it is a configuration problem, not transport trouble, so it must
+    // never enter the retry/backoff branch below — and fetch never fires
+    // without auth (pinned in client.test.ts).
+    const missing = missingCredentialsMessage(this.config);
+    if (missing) throw new CredentialsError(missing);
+
     let payload = body;
     if (method === "POST") {
       payload = { folderId: this.config.folderId, ...(body ?? {}) };

@@ -1,12 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { ConfigError, loadConfig } from "./config.js";
+import { loadConfig } from "./config.js";
 
-/**
- * The reason codes below are the vocabulary the dashboard groups by — renaming
- * one silently splits a bar in two, so they are pinned here.
- */
 function withEnv(vars: Record<string, string | undefined>, run: () => void): void {
   const saved = new Map(Object.keys(vars).map((k) => [k, process.env[k]]));
   for (const [k, v] of Object.entries(vars)) {
@@ -23,36 +19,53 @@ function withEnv(vars: Record<string, string | undefined>, run: () => void): voi
   }
 }
 
-function reasonOf(vars: Record<string, string | undefined>): string {
-  let caught: unknown;
-  withEnv(vars, () => {
-    try {
-      loadConfig();
-    } catch (err) {
-      caught = err;
-    }
+/**
+ * Missing credentials used to throw, which killed the process before the MCP
+ * handshake and left the user with a silent red cross. It is now a survivable
+ * state: the server starts, answers initialize/tools/list, and the client
+ * raises CredentialsError at call time (pinned in client.test.ts). Pinned here
+ * because reverting it would restore that dead end.
+ */
+test("a missing api key does not throw — the server must start degraded", () => {
+  withEnv({ WORDSTAT_API_KEY: undefined, WORDSTAT_FOLDER_ID: "folder" }, () => {
+    const config = loadConfig();
+    assert.equal(config.token, undefined);
+    assert.equal(config.folderId, "folder");
   });
-  assert.ok(caught instanceof ConfigError, "config problems must throw ConfigError, not exit");
-  return caught.reason;
-}
+});
 
-test("a missing api key reports missing_token", () => {
-  assert.equal(
-    reasonOf({ WORDSTAT_API_KEY: undefined, WORDSTAT_FOLDER_ID: "folder" }),
-    "missing_token",
+test("a missing folder id does not throw either", () => {
+  withEnv({ WORDSTAT_API_KEY: "key", WORDSTAT_FOLDER_ID: undefined }, () => {
+    const config = loadConfig();
+    assert.equal(config.token, "key");
+    assert.equal(config.folderId, undefined);
+  });
+});
+
+test("with neither variable the config still loads, with defaults intact", () => {
+  withEnv(
+    { WORDSTAT_API_KEY: undefined, WORDSTAT_FOLDER_ID: undefined, WORDSTAT_API_BASE: undefined },
+    () => {
+      const config = loadConfig();
+      assert.equal(config.token, undefined);
+      assert.equal(config.folderId, undefined);
+      assert.equal(config.apiBase, "https://searchapi.api.cloud.yandex.net");
+    },
   );
 });
 
-test("a missing folder id is its own reason", () => {
-  // Wordstat needs two variables; the folder id is the one people forget.
-  assert.equal(
-    reasonOf({ WORDSTAT_API_KEY: "key", WORDSTAT_FOLDER_ID: undefined }),
-    "missing_folder_id",
-  );
+test("an empty value is treated as absent, not as an empty credential", () => {
+  withEnv({ WORDSTAT_API_KEY: "", WORDSTAT_FOLDER_ID: "" }, () => {
+    const config = loadConfig();
+    assert.equal(config.token, undefined);
+    assert.equal(config.folderId, undefined);
+  });
 });
 
 test("a fully configured server loads without throwing", () => {
   withEnv({ WORDSTAT_API_KEY: "key", WORDSTAT_FOLDER_ID: "folder" }, () => {
-    assert.equal(loadConfig().folderId, "folder");
+    const config = loadConfig();
+    assert.equal(config.token, "key");
+    assert.equal(config.folderId, "folder");
   });
 });

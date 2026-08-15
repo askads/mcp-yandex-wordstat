@@ -1,5 +1,6 @@
 import { ConfigError, loadConfig } from "./config.js";
 import { WordstatClient } from "./client.js";
+import { CredentialsError } from "./types.js";
 
 /** Live READ-ONLY smoke check: pulls top requests for a sample phrase. */
 async function main(): Promise<void> {
@@ -11,6 +12,7 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   // A missing key is a user error, not a bug: report it without the stack.
-  console.error("smoke failed:", err instanceof ConfigError ? err.message : err);
+  const userError = err instanceof ConfigError || err instanceof CredentialsError;
+  console.error("smoke failed:", userError ? err.message : err);
   process.exit(1);
 });

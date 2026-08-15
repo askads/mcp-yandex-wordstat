@@ -104,3 +104,42 @@ test("dist initialize hands the model non-empty instructions", async () => {
     await client.close();
   }
 });
+
+test("dist server without credentials still answers initialize, tools/list and a call", async () => {
+  // The regression this exists for: with no WORDSTAT_* variables the server
+  // used to exit(1) before the MCP handshake, so the client showed a dead
+  // server and the user never learned why. It must now start, list its tools,
+  // open the instructions with the fix, and answer a tool call with the
+  // credentials error instead of dropping the connection. No network: the
+  // credentials check rejects the call before fetch.
+  const env = { ...process.env, ASKADS_TELEMETRY: "0" };
+  delete env.WORDSTAT_API_KEY;
+  delete env.WORDSTAT_FOLDER_ID;
+
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [fileURLToPath(new URL("../dist/index.js", import.meta.url))],
+    stderr: "ignore",
+    env,
+  });
+  const client = new Client({ name: "dist-smoke", version: "1.0.0" });
+
+  try {
+    await client.connect(transport);
+
+    const tools = (await client.listTools()).tools.map((t) => t.name);
+    assert.ok(tools.includes("top_requests"), "an unconfigured server must still list its tools");
+
+    const instructions = client.getInstructions() ?? "";
+    assert.match(instructions, /WORDSTAT_API_KEY/, "instructions must name the variable to set");
+    assert.match(instructions, /перезапустить сервер/, "and say the server needs a restart");
+
+    const result = await client.callTool({ name: "top_requests", arguments: { phrase: "тест" } });
+    assert.equal(result.isError, true, "the call must fail, not the connection");
+    const text = result.content.map((c) => c.text ?? "").join(" ");
+    assert.match(text, /WORDSTAT_API_KEY/, "the error must name the missing variables");
+    assert.match(text, /WORDSTAT_FOLDER_ID/, "both of them");
+  } finally {
+    await client.close();
+  }
+});
