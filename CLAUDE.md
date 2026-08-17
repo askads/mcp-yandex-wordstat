@@ -60,6 +60,8 @@ npm run smoke      # live READ-ONLY call (needs WORDSTAT_API_KEY + WORDSTAT_FOLD
 
 ## Adding a tool
 
+Before changing the tool registry, read [the MCP capability documentation contract](docs/CAPABILITY-DOCUMENTATION.md). Every registered tool must have exactly one task-oriented page in `docs/capabilities/`; update that page, the index, and the coverage test in the same change.
+
 1. Add (or extend) `src/tools/<name>.ts` with `register<Name>Tools(server, client)`.
 2. If it hits a new endpoint, add a method to `src/client.ts` with the wire mapping.
 3. Import and call the register fn in `src/index.ts`.
