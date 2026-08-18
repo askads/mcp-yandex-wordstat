@@ -18,10 +18,17 @@ export type Period = "daily" | "weekly" | "monthly";
 export type RegionMode = "all" | "cities" | "regions";
 
 export interface WordstatConfig {
-  /** Yandex Cloud API key (Search API), sent as `Api-Key`. Treated as a secret. */
-  token: string;
-  /** Yandex Cloud folder id, injected into every request body. */
-  folderId: string;
+  /**
+   * Yandex Cloud API key (Search API), sent as `Api-Key`. Treated as a secret.
+   * Absent when WORDSTAT_API_KEY is not set — the server still starts (degraded)
+   * and the client raises {@link CredentialsError} at call time.
+   */
+  token?: string;
+  /**
+   * Yandex Cloud folder id, injected into every request body. Absent when
+   * WORDSTAT_FOLDER_ID is not set — same degraded start as `token`.
+   */
+  folderId?: string;
   /** API root host. Defaults to the Yandex Cloud Search API. */
   apiBase: string;
   /** Accept-Language header sent with every request. */
@@ -32,6 +39,22 @@ export interface WordstatConfig {
   maxRetries?: number;
   /** Base backoff in milliseconds, doubled each retry. Defaults to 500. */
   retryBaseMs?: number;
+}
+
+/**
+ * Raised when a tool is called while WORDSTAT_API_KEY / WORDSTAT_FOLDER_ID is
+ * missing. The message is the whole point of the class: it is the only text the
+ * calling model reads and relays, so it names the variable to set (and that the
+ * server needs a restart) instead of describing the failure. The client throws
+ * it before building the request — a missing credential is a configuration
+ * problem, not transport trouble, so it must never enter the retry/backoff
+ * branch or reach fetch.
+ */
+export class CredentialsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CredentialsError";
+  }
 }
 
 /**

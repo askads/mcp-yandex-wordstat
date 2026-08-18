@@ -20,29 +20,47 @@ npm run smoke      # live READ-ONLY call (needs WORDSTAT_API_KEY + WORDSTAT_FOLD
 
 ## Architecture
 
-- `src/config.ts` — env → config; throws `ConfigError` (with a `reason` code) instead of
-  exiting, so `index.ts` can report the drop-off before dying.
-  Requires `WORDSTAT_API_KEY` + `WORDSTAT_FOLDER_ID`;
-  optional `WORDSTAT_LANG`, `WORDSTAT_API_BASE`, `WORDSTAT_TIMEOUT_MS`, `WORDSTAT_MAX_RETRIES`.
+- `src/config.ts` — env → config. Missing `WORDSTAT_API_KEY` / `WORDSTAT_FOLDER_ID` is NOT an
+  error: the fields stay `undefined`, the server starts degraded and the client raises
+  `CredentialsError` at call time. `ConfigError` (with a `reason` code) is reserved for
+  malformed values, caught by `loadConfigOrDegraded` in `index.ts` (no such checks exist today).
+  Optional `WORDSTAT_LANG`, `WORDSTAT_API_BASE`, `WORDSTAT_TIMEOUT_MS`, `WORDSTAT_MAX_RETRIES`.
 - `src/client.ts` — maps each logical call (`topRequests`/`dynamics`/`regions`/`regionsTree`)
   to a `v2/wordstat/*` path: `Api-Key` auth, all `POST`, `folderId` injected into every body,
-  regions as **strings**, `DEVICE_*` / `PERIOD_*` / `REGION_*` enums. `request()` resolves the
-  path against the base and rejects any path that escapes to a foreign origin (SSRF guard),
-  retries 429 / 5xx / network errors with backoff (honors `Retry-After`), enforces an
-  AbortController timeout that also covers reading the body, and throws `WordstatError(status, body)`.
+  regions as **strings**, `DEVICE_*` / `PERIOD_*` / `REGION_*` enums. `request()` first rejects
+  a missing credential with `CredentialsError` (before building the request, the retries and
+  fetch — the message is the product: it names the env variable to set and the needed restart),
+  then resolves the path against the base and rejects any path that escapes to a foreign origin
+  (SSRF guard), retries 429 / 5xx / network errors with backoff (honors `Retry-After`), enforces
+  an AbortController timeout that also covers reading the body, and throws `WordstatError(status, body)`.
 - `src/tools/wordstat.ts` — `top_requests`, `dynamics`, `regions`, `list_regions`. Inputs are
   normalized (`regionIds`, `devices`, `period`, `regionMode`); the client does the wire mapping.
   `src/tools/raw.ts` — `raw_request` (POST only). `src/tools/util.ts` — `ok`/`fail`, the
   `READ_ONLY` annotation and shared zod schema factories (`deviceEnum`, `rfc3339Date`).
-- `src/index.ts` — wires every `register*` into the McpServer.
+- `src/index.ts` — wires every `register*` into the McpServer. `loadConfigOrDegraded` starts
+  the server even on a config problem; without credentials the initialize `instructions` open
+  with the unconfigured prefix (set `WORDSTAT_API_KEY` / `WORDSTAT_FOLDER_ID` and restart).
 - `src/telemetry.ts` — anonymous usage pings (ids/names/versions only, never data or
   arguments; fire-and-forget, must never block or throw; opt-out `ASKADS_TELEMETRY=0`).
-  `startup_failed` is the exception: `sendBlocking` awaits it, because the caller
-  exits right after and a fire-and-forget ping would die in flight. Its `reason`
-  is a closed vocabulary (`missing_token`, …) — never a variable's name or value.
+  `server_start` means "a usable install started"; an install without credentials sends
+  `unconfigured_start` instead. The `reason` is a closed vocabulary (`missing_token`,
+  `missing_folder_id`) — never a variable's name or value. `startup_failed` remains for a
+  config unusable at load time (malformed values), also fire-and-forget.
 
 ## Conventions (do not break)
 
+- **Never exit because of configuration.** A server that dies before the MCP handshake leaves
+  the user with a red cross and no reason — the sibling Metrica server's telemetry showed that
+  state accounted for nearly every unconfigured install. Missing credentials are a survivable
+  state: start, answer `initialize`/`tools/list` (with the unconfigured prefix in the
+  instructions), and reject tool calls with `CredentialsError`. There are no login tools:
+  credentials come only from the environment, so the fix is the operator setting
+  `WORDSTAT_API_KEY` / `WORDSTAT_FOLDER_ID` and restarting the server.
+  `config.test.ts`, `client.test.ts` and `test/dist-smoke.test.js` pin this.
+- **Credential failures are not transport failures.** `CredentialsError` is thrown before the
+  retry/backoff branch (and before fetch) in `request()` — retrying it burns seconds of backoff
+  before the user sees the one message that helps. Pinned by "fetch must not be called"
+  assertions in `client.test.ts`.
 - **Read-only.** The Wordstat API has no write endpoints; all tools (and `raw_request`)
   carry `READ_ONLY`. Don't add write paths.
 - **Wire mapping lives in the client, not the tools.** Tools accept normalized inputs and

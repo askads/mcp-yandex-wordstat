@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WordstatClient } from "./client.js";
-import { ConfigError, loadConfig } from "./config.js";
+import { ConfigError, DEFAULT_API_BASE, loadConfig } from "./config.js";
 import { instrumentToolCalls, Telemetry } from "./telemetry.js";
 import type { WordstatConfig } from "./types.js";
 import { registerWordstatTools } from "./tools/wordstat.js";
@@ -32,6 +32,21 @@ const INSTRUCTIONS =
   "вызов после них бесполезно. 401/403 означает, что у ключа нет доступа к Search API или " +
   "WORDSTAT_FOLDER_ID указывает не на тот каталог, — это чинит оператор, дело не в фразе.";
 
+/**
+ * Prepended to INSTRUCTIONS when a credential is missing. The model reads this
+ * before it picks a tool, so an unconfigured session opens with the fix rather
+ * than with a failed call. Unlike the Metrica sibling there is no in-chat
+ * login: the key comes only from the environment, so the fix is the operator's —
+ * set the variables and restart the server.
+ */
+const UNCONFIGURED_PREFIX =
+  "ВНИМАНИЕ: Яндекс Вордстат ещё не настроен — не заданы переменные окружения WORDSTAT_API_KEY " +
+  "и/или WORDSTAT_FOLDER_ID, поэтому любой вызов инструмента вернёт ошибку. Подключиться из " +
+  "диалога нельзя: оператор должен задать WORDSTAT_API_KEY (API-ключ Yandex Cloud Search API — " +
+  "тот же тип ключа, что для YandexGPT; выдаётся сервисному аккаунту с ролью " +
+  "search-api.webSearch.user) и WORDSTAT_FOLDER_ID (id каталога из консоли Yandex Cloud) в " +
+  "конфигурации MCP-клиента и перезапустить сервер. ";
+
 /** Reads the package version so the server reports its real version to MCP clients. */
 function readVersion(): string {
   try {
@@ -43,29 +58,47 @@ function readVersion(): string {
 }
 
 /**
- * Loads the config, reporting the drop-off if it is missing. An unconfigured
- * server dies before the MCP handshake, so this ping is the only trace such an
- * install ever leaves — and it has to be awaited, or process.exit() below would
- * kill the request in flight.
+ * Loads the config without dying on a bad value. A server that exits here never
+ * completes the MCP handshake, so the user sees a red cross and no reason —
+ * instead the problem is carried into the session, where the model can read it
+ * and relay it. (Missing credentials are not an error at all — loadConfig
+ * leaves the fields undefined; today it has no malformed-value checks either,
+ * so the catch guards future ones.)
  */
-async function loadConfigOrExit(telemetry: Telemetry): Promise<WordstatConfig> {
+function loadConfigOrDegraded(telemetry: Telemetry): {
+  config: WordstatConfig;
+  problem?: ConfigError;
+} {
   try {
-    return loadConfig();
+    return { config: loadConfig() };
   } catch (err) {
     if (!(err instanceof ConfigError)) throw err;
-    console.error(`Ошибка: ${err.message}`);
-    await telemetry.sendBlocking("startup_failed", { reason: err.reason });
-    process.exit(1);
+    console.error(`Ошибка конфигурации: ${err.message}`);
+    // Fire-and-forget now that the process survives: the historical
+    // `startup_failed` funnel stays comparable, but nothing blocks startup.
+    telemetry.send("startup_failed", { reason: err.reason });
+    return {
+      config: {
+        apiBase: process.env.WORDSTAT_API_BASE || DEFAULT_API_BASE,
+        lang: process.env.WORDSTAT_LANG || "ru",
+      },
+      problem: err,
+    };
   }
 }
 
 async function main(): Promise<void> {
   // Anonymous usage pings (ids/names/versions only, never data or arguments);
-  // opt out with ASKADS_TELEMETRY=0. Built before the config so a missing key
-  // can be reported; wired to the server before tools register.
+  // opt out with ASKADS_TELEMETRY=0. Built before the config so a config
+  // problem can be reported; wired to the server before tools register.
   const telemetry = new Telemetry(readVersion());
-  const config = await loadConfigOrExit(telemetry);
+  const { config, problem } = loadConfigOrDegraded(telemetry);
   const client = new WordstatClient(config);
+
+  // Credentials come only from the environment, so this cannot change
+  // mid-session: an unconfigured start stays unconfigured until the operator
+  // sets the variables and restarts the server.
+  const connected = Boolean(config.token && config.folderId);
 
   // `instructions` rides in the server options (second argument) and surfaces as
   // the top-level `instructions` of the initialize result.
@@ -74,13 +107,26 @@ async function main(): Promise<void> {
       name: "mcp-yandex-wordstat",
       version: readVersion(),
     },
-    { instructions: INSTRUCTIONS },
+    {
+      instructions: connected
+        ? INSTRUCTIONS
+        : UNCONFIGURED_PREFIX + (problem ? `Проблема конфигурации: ${problem.message} ` : "") + INSTRUCTIONS,
+    },
   );
 
   instrumentToolCalls(server, telemetry);
   server.server.oninitialized = () => {
     telemetry.setClientInfo(server.server.getClientVersion());
-    telemetry.send("server_start");
+    // Split on purpose: `server_start` keeps meaning "a usable install started",
+    // so the unconfigured case gets its own event instead of inflating that
+    // number. The reason vocabulary is the historical closed set — with both
+    // variables absent it stays missing_token, matching the old check order.
+    if (connected) telemetry.send("server_start");
+    else {
+      telemetry.send("unconfigured_start", {
+        reason: problem?.reason ?? (!config.token ? "missing_token" : "missing_folder_id"),
+      });
+    }
   };
 
   registerWordstatTools(server, client);
@@ -88,7 +134,11 @@ async function main(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("mcp-yandex-wordstat работает на stdio");
+  console.error(
+    `mcp-yandex-wordstat работает на stdio${
+      connected ? "" : " (не заданы WORDSTAT_API_KEY/WORDSTAT_FOLDER_ID — задайте переменные и перезапустите сервер)"
+    }`,
+  );
 }
 
 main().catch((err) => {
