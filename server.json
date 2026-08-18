@@ -8,13 +8,13 @@
     "url": "https://github.com/askads/mcp-yandex-wordstat",
     "source": "github"
   },
-  "version": "2.2.2",
+  "version": "2.3.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcp-yandex-wordstat",
-      "version": "2.2.2",
+      "version": "2.3.0",
       "transport": {
         "type": "stdio"
       },
