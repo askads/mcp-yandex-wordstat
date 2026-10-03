@@ -4,8 +4,8 @@
   "version": "2.3.0",
   "description": "Read Yandex search-demand statistics from Claude: how often a phrase is searched, when, and in which regions.",
   "author": {
-    "name": "AskAds",
-    "url": "https://askads.ru"
+    "name": "gistrec",
+    "url": "https://gistrec.cloud"
   },
   "homepage": "https://github.com/askads/mcp-yandex-wordstat#readme",
   "repository": "https://github.com/askads/mcp-yandex-wordstat",

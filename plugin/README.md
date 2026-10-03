@@ -2,8 +2,9 @@
 
 Read Yandex search-demand statistics from Claude: how often a phrase is searched, when, and in which regions.
 
-This plugin is an **unofficial, third-party client** published by AskAds. It is not
-affiliated with, endorsed by, or operated by the owner of the API it talks to.
+This plugin is an **unofficial, third-party client** maintained by gistrec, part of the
+AskAds line of MCP servers. It is not affiliated with, endorsed by, or operated by the
+owner of the API it talks to.
 
 ## What the plugin does
 
