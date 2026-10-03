@@ -1,0 +1,54 @@
+{
+  "name": "mcp-yandex-wordstat",
+  "displayName": "Yandex Wordstat MCP",
+  "version": "2.3.0",
+  "description": "Read Yandex search-demand statistics from Claude: how often a phrase is searched, when, and in which regions.",
+  "author": {
+    "name": "gistrec",
+    "url": "https://gistrec.cloud"
+  },
+  "homepage": "https://github.com/askads/mcp-yandex-wordstat#readme",
+  "repository": "https://github.com/askads/mcp-yandex-wordstat",
+  "license": "MIT",
+  "keywords": [
+    "yandex-wordstat",
+    "keyword-research",
+    "seo",
+    "marketing"
+  ],
+  "userConfig": {
+    "token": {
+      "type": "string",
+      "title": "Yandex Cloud API key",
+      "description": "API key with access to the Yandex Cloud Search API. Stored in your operating system's credential store, never in settings.json.",
+      "sensitive": true,
+      "required": true
+    },
+    "folder_id": {
+      "type": "string",
+      "title": "Yandex Cloud folder id",
+      "description": "Folder the API key belongs to. Required: a key pointed at the wrong folder returns 401 or 403.",
+      "required": true
+    },
+    "telemetry": {
+      "type": "string",
+      "title": "Anonymous telemetry",
+      "description": "Set to 0 to disable the anonymous usage telemetry the server sends by default. Leave as 1 to keep it on.",
+      "default": "1"
+    }
+  },
+  "mcpServers": {
+    "yandex-wordstat": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-yandex-wordstat@2.3.0"
+      ],
+      "env": {
+        "WORDSTAT_API_KEY": "${user_config.token}",
+        "WORDSTAT_FOLDER_ID": "${user_config.folder_id}",
+        "ASKADS_TELEMETRY": "${user_config.telemetry}"
+      }
+    }
+  }
+}
