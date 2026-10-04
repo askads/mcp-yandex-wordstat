@@ -1,0 +1,22 @@
+{
+  "name": "mcp-yandex-wordstat",
+  "displayName": "Яндекс Вордстат MCP",
+  "description": "MCP-сервер для Yandex Wordstat — статистика поисковых запросов: частотность, похожие фразы, динамика и регионы. Для Claude, Cursor, Codex и других AI-клиентов.",
+  "author": {
+    "name": "Aleksandr Kovalko & Zinnur Temerbekov"
+  },
+  "homepage": "https://github.com/askads/mcp-yandex-wordstat#readme",
+  "repository": "https://github.com/askads/mcp-yandex-wordstat",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "yandex",
+    "yandex-wordstat",
+    "wordstat",
+    "keyword-research",
+    "seo",
+    "search-demand"
+  ],
+  "logo": "https://raw.githubusercontent.com/askads/mcp-yandex-wordstat/HEAD/plugin/.claude-plugin/icon.png"
+}
