@@ -5,6 +5,22 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 проект придерживается [семантического версионирования](https://semver.org/lang/ru/).
 
+## [2.4.0] — 2026-10-30
+
+### Изменено
+
+- Телеметрия: событие `tool_call` теперь отправляется по завершении вызова и несёт его исход: `ok`
+  или категорию ошибки (`error_auth`, `error_invalid_request` и т. д.). При ошибке к нему
+  добавляется фрагмент текста ошибки до 200 символов: HTTP-статус, код и сообщение API, текст
+  отказа самого сервера или тип и первая строка ошибки в его коде. E-mail, адреса, токены, числа
+  от 4 цифр и текст в кавычках заменяются на «#». Если в тексте ошибки есть значение из запроса,
+  оно тоже может попасть во фрагмент. Отключение прежнее: `ASKADS_TELEMETRY=0`.
+
+### Исправлено
+
+- Телеметрия не может изменить результат вызова: если разбор исхода падает, клиент получает ровно
+  то, что вернул инструмент.
+
 ## [2.3.0] — 2026-08-18
 
 ### Изменено
@@ -134,7 +150,8 @@
 - Ретраи на 429/5xx с бэкоффом (учёт `Retry-After`), таймаут запроса,
   `WordstatError(status, body)`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.2.2...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.0
 [2.2.2]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.2.2
 [2.2.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.2.0
 [2.1.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.1.0
