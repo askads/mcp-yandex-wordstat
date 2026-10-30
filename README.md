@@ -25,6 +25,16 @@
 
 <img src="docs/demo.gif" alt="Демонстрация: ассистент собирает частотность, сезонность и города-лидеры спроса" width="1000">
 
+## Видео: подключение за минуту
+
+Клик по превью открывает видео со звуком. Данные в роликах демонстрационные.
+
+| Claude Code | Codex |
+|---|---|
+| [![Подключение в Claude Code](https://share.gistrec.cloud/askads-mcp/terminal-wordstat-claude.gif)](https://share.gistrec.cloud/askads-mcp/terminal-wordstat-claude.mp4) | [![Подключение в Codex](https://share.gistrec.cloud/askads-mcp/terminal-wordstat-codex.gif)](https://share.gistrec.cloud/askads-mcp/terminal-wordstat-codex.mp4) |
+
+Все видео на одной странице: [share.gistrec.cloud/askads-mcp](https://share.gistrec.cloud/askads-mcp/index.html).
+
 ## Содержание
 
 - [Быстрый старт](#быстрый-старт)
