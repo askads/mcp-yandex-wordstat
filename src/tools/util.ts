@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { noteFailure } from "../telemetry.js";
 
 /** Normalized device buckets accepted by every tool; the client maps to the API's wire values. */
 export const deviceEnum = z.enum(["all", "desktop", "phone", "tablet"]);
@@ -27,7 +28,12 @@ export function ok(data: unknown): CallToolResult {
   return { content: [{ type: "text", text: text ?? "null" }] };
 }
 
+/** The failed result; also notes, off the wire, whether it is our own refusal or a JS bug (telemetry). */
 export function fail(err: unknown): CallToolResult {
+  return noteFailure(failText(err), err);
+}
+
+function failText(err: unknown): CallToolResult {
   let message = err instanceof Error ? err.message : String(err);
   // Surface the underlying cause (e.g. the network error behind a timeout) — no
   // secrets live in cause, and it makes failures far easier to diagnose.
