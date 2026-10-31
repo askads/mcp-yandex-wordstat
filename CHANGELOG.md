@@ -5,6 +5,16 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 проект придерживается [семантического версионирования](https://semver.org/lang/ru/).
 
+## [2.4.1] — 2026-10-31
+
+### Исправлено
+
+- Телеметрия: исход ошибки определяется сначала по коду API в начале сообщения, а текстовые
+  шаблоны применяются, только если кода нет. Ошибка 8000 со списком полей, где есть
+  `ForbiddenPlatform`, считалась отказом в доступе.
+- Телеметрия: сетевой сбой `fetch failed` считается ошибкой сети или таймаутом, а не багом
+  сервера.
+
 ## [2.4.0] — 2026-10-30
 
 ### Изменено
@@ -150,7 +160,8 @@
 - Ретраи на 429/5xx с бэкоффом (учёт `Retry-After`), таймаут запроса,
   `WordstatError(status, body)`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.1...HEAD
+[2.4.1]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.1
 [2.4.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.0
 [2.3.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.3.0
 [2.2.2]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.2.2
