@@ -1,7 +1,7 @@
 {
   "name": "mcp-yandex-wordstat",
   "displayName": "Yandex Wordstat MCP",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Read Yandex search-demand statistics from Claude: how often a phrase is searched, when, and in which regions.",
   "author": {
     "name": "gistrec",
@@ -43,7 +43,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "mcp-yandex-wordstat@2.4.1"
+        "mcp-yandex-wordstat@2.4.2"
       ],
       "env": {
         "WORDSTAT_API_KEY": "${user_config.token}",

@@ -5,6 +5,15 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 проект придерживается [семантического версионирования](https://semver.org/lang/ru/).
 
+## [2.4.2] — 2026-10-31
+
+### Исправлено
+
+- Телеметрия: если выжимка текста ошибки ничего не нашла, собственные классы ошибок сервера
+  (`AuthRequiredError`, `AbortError` …) передают имя класса, без сообщения; обычный `Error` и
+  системные ошибки не передают ничего. Ошибки Node с `code`, `errno` или `syscall` передают только тип
+  и код. Раньше такие отказы приходили без текста.
+
 ## [2.4.1] — 2026-10-31
 
 ### Исправлено
@@ -161,6 +170,7 @@
   `WordstatError(status, body)`.
 
 [Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.1...HEAD
+[2.4.2]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.2
 [2.4.1]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.1
 [2.4.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.0
 [2.3.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.3.0
