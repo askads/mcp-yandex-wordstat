@@ -596,3 +596,60 @@ test("errorDetail masks long quotes and any value after a secret key", () => {
   }
   assert.equal(errorDetail("HTTP 401: token expired"), "HTTP 401 token expired");
 });
+
+// --- this server's own error classes: class name when the allowlist finds nothing --------
+
+class OwnError extends Error {
+  constructor(name: string, message: string) {
+    super(message);
+    this.name = name;
+  }
+}
+
+test("our own error class without an allowlisted fragment sends its class name only", async () => {
+  const { mcp, sent } = await pairWith((server) => {
+    server.registerTool("auth", { description: "a", inputSchema: {} }, async () =>
+      failLike(new OwnError("AuthRequiredError", "Не настроено подключение для Иван Иванов")),
+    );
+    server.registerTool("down", { description: "d", inputSchema: {} }, async () => {
+      throw new OwnError("DirectUnavailableError", "API недоступен для кампании SummerSale");
+    });
+  });
+  await mcp.callTool({ name: "auth", arguments: {} });
+  await mcp.callTool({ name: "down", arguments: {} });
+  const [auth, down] = sent.filter((s) => s.body.event === "tool_call");
+  assert.equal(auth.body.reason, "error_auth");
+  assert.equal(auth.body.error_detail, "AuthRequiredError");
+  assert.equal(down.body.reason, "error_upstream");
+  assert.equal(down.body.error_detail, "DirectUnavailableError");
+  assert.ok(!JSON.stringify(sent).includes("Иван") && !JSON.stringify(sent).includes("SummerSale"));
+});
+
+test("a plain Error or a system error with user data sends no text at all", async () => {
+  const { mcp, sent } = await pairWith((server) => {
+    server.registerTool("plain", { description: "p", inputSchema: {} }, async () =>
+      failLike(new Error("Клиент Иван Иванов, кампания SummerSale")),
+    );
+    server.registerTool("fs", { description: "f", inputSchema: {} }, async () => {
+      throw Object.assign(new Error("ENOENT: no such file or directory, open '/tmp/Иван's паспорт'"), {
+        code: "ENOENT", errno: -2, syscall: "open",
+      });
+    });
+  });
+  await mcp.callTool({ name: "plain", arguments: {} });
+  await mcp.callTool({ name: "fs", arguments: {} });
+  const calls = sent.filter((s) => s.body.event === "tool_call");
+  assert.deepEqual(calls.map((c) => c.body.error_detail), [undefined, undefined]);
+  assert.ok(!JSON.stringify(sent).includes("Иван"));
+});
+
+test("an allowlisted fragment still wins over the error class", async () => {
+  const { mcp, sent } = await pairWith((server) =>
+    server.registerTool("api", { description: "a", inputSchema: {} }, async () =>
+      failLike(new OwnError("YandexDirectError", "[53] Ошибка авторизации: Недействительный OAuth-токен")),
+    ),
+  );
+  await mcp.callTool({ name: "api", arguments: {} });
+  const call = sent.find((s) => s.body.event === "tool_call")!;
+  assert.equal(call.body.error_detail, "code=53 Ошибка авторизации: Недействительный OAuth-токен");
+});
