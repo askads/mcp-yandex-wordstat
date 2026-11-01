@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [2.4.3] — 2026-11-01
+
 ### Исправлено
 
 - Описание `list_regions` отправляло id регионов в `regionMode`, а тот принимает только
@@ -185,7 +187,8 @@
 - Ретраи на 429/5xx с бэкоффом (учёт `Retry-After`), таймаут запроса,
   `WordstatError(status, body)`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.2...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.3...HEAD
+[2.4.3]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.2...v2.4.3
 [2.4.2]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.2
 [2.4.1]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.1
 [2.4.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.0
