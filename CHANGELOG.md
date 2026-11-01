@@ -5,6 +5,14 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 проект придерживается [семантического версионирования](https://semver.org/lang/ru/).
 
+## [Unreleased]
+
+### Удалено
+
+- `plugin/` — Claude- и Cursor-плагин со скиллом `keyword-research`. Плагины живут отдельно от
+  MCP-сервера (маркетплейс `askads/claude-plugins`), а этот был закреплён на точной версии
+  npm-пакета и обновлялся вручную с каждым релизом.
+
 ## [2.4.2] — 2026-10-31
 
 ### Исправлено
@@ -169,7 +177,7 @@
 - Ретраи на 429/5xx с бэкоффом (учёт `Retry-After`), таймаут запроса,
   `WordstatError(status, body)`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.1...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.2...HEAD
 [2.4.2]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.2
 [2.4.1]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.1
 [2.4.0]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.0
