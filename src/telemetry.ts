@@ -167,7 +167,7 @@ const OUTCOME_PATTERNS: ReadonlyArray<readonly [ToolOutcome, RegExp]> = [
   ["error_permission", /нет доступа к кабинету|не подключ[её]н к аккаунту/i],
   [
     "error_auth",
-    /\b401\b|unauthori[sz]ed|unauthenticated|invalid[ _-]?(?:token|grant|credentials)|token (?:expired|revoked)|login required|AuthRequired|авториз|не подключ|\[53\]/i,
+    /\b401\b|unauthori[sz]ed|unauthenticated|invalid[ _-]?(?:token|grant|credentials)|token (?:expired|revoked)|login required|AuthRequired|CredentialsError|авториз|не подключ|\[53\]/i,
   ],
   ["error_permission", /\b403\b|forbidden|access[ _-]?denied|permission|insufficient[ _-]?scope|нет доступа|\[(?:54|3228)\]/i],
   ["error_not_found", /\b404\b|not[ _-]?found|не найден|не существует|\[8800\]/i],
@@ -211,10 +211,13 @@ export function toolOutcome(result: unknown, ...thrown: [unknown?]): ToolOutcome
   return didThrow ? "error_internal" : "error_other";
 }
 
-/** Error excerpt: allowlisted fragments of the error text, masked (port of the Ask Ads gateway's). */
+/**
+ * Error excerpt: allowlisted fragments of the error text, masked (port of the Ask Ads gateway's).
+ * A numeric [code] right after "HTTP NNN:" is the API's code, not data.
+ */
 export const DETAIL_MAX = 200;
 const PICK =
-  /\bHTTP (?<http>\d{3})\b(?::\s*(?<htext>[^{[]{1,200}))?|^(?:Ошибка: )?\[(?<bcode>\d{1,5})\]\s*(?<btext>[^;(]{1,200})|\[(?<tag>[A-Za-z][A-Za-z_]{2,})\]\s*(?<ttext>[^;(]{0,200})|\berror_code["']?\s*[:=]\s*["']?(?<code>\d{1,5})\b|\b(?<key>error_string|error_detail|error_type|message)["']?\s*[:=]\s*["']?(?<value>[^"'}\]]{1,80})|\b(?<net>ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|timed out|fetch failed|socket hang up|connection closed)\b|(?<netru>превысил таймаут)/gi;
+  /\bHTTP (?<http>\d{3})\b(?::\s*(?:\[(?<hcode>\d{1,5})\]\s*)?(?<htext>[^{[]{0,200}))?|^(?:Ошибка: )?\[(?<bcode>\d{1,5})\]\s*(?<btext>[^;(]{1,200})|\[(?<tag>[A-Za-z][A-Za-z_]{2,})\]\s*(?<ttext>[^;(]{0,200})|\berror_code["']?\s*[:=]\s*["']?(?<code>\d{1,5})\b|\b(?<key>error_string|error_detail|error_type|message)["']?\s*[:=]\s*["']?(?<value>[^"'}\]]{1,80})|\b(?<net>ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|timed out|fetch failed|socket hang up|connection closed)\b|(?<netru>превысил таймаут)/gi;
 const SCRUB =
   /(?<key>(?:login|password|secret|token|api[_-]?key|authorization)\s*[:=]\s*["']?|(?:bearer|basic)\s+)(?<val>[^,;]+)|[^\s,;]*(?:@|:\/\/|%3A|\p{L}\.\p{L})[^\s,;]*|(?<key2>\b(?:token|secret|password|api[_-]?key|access_token|refresh_token|client_secret)\s+)(?!(?:expired|invalid|is|was|for|has|not|missing|required|revoked|provided|type)\b)\S+|\b(?:y0_|AQAA|AQVN|t1\.|sk-|vk1\.|vk_|ghp_|ya29\.)\S+|\b(?=[\w-]*\d)(?=[\w-]*[A-Za-z])[\w-]{20,}\b|\+?\d(?:[\s().-]*\d){3,}/giu;
 const QUOTED = /(?<!\p{L})'[^'\n]+(?:'(?!\p{L})|$)|"[^"\n]+(?:"|$)|«[^»]+(?:»|$)/gu;
@@ -235,7 +238,7 @@ export function errorDetail(text: string): string {
   for (let m = PICK.exec(flat); m; m = PICK.exec(flat)) {
     const g = m.groups ?? {};
     let token: string;
-    if (g.http) token = `HTTP ${g.http} ${scrub(g.htext ?? "")}`;
+    if (g.http) token = `HTTP ${g.http}${g.hcode ? `; code=${g.hcode}` : ""} ${scrub(g.htext ?? "")}`;
     else if (g.bcode) token = `code=${g.bcode} ${scrub(g.btext ?? "")}`;
     else if (g.tag) {
       // Tags are upper-case only; the rest of PICK is case-insensitive.
@@ -273,7 +276,7 @@ function jsBug(err: unknown): string | undefined {
 }
 
 /**
- * Only the class name of this server's own errors (AuthRequiredError, AbortError), used when the
+ * Only the class name of this server's own errors (AuthRequiredError, CredentialsError, AbortError), used when the
  * allowlist finds nothing. Never the message: a plain Error or a system error (ENOENT …) can carry
  * user data, so those send nothing.
  */

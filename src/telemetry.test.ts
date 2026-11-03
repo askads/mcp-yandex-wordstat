@@ -13,6 +13,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 import { instrumentToolCalls, Telemetry, telemetryEnabled, DETAIL_MAX, errorDetail, noteFailure, TOOL_OUTCOMES, toolOutcome } from "./telemetry.js";
 import { fail } from "./tools/util.js";
+import { WordstatClient } from "./client.js";
+import { WordstatError } from "./types.js";
 
 interface Sent {
   url: string;
@@ -171,6 +173,7 @@ test("toolOutcome: success is ok, isError is classified from the text", () => {
     ["Запрос превысил таймаут 30 с", "error_timeout"],
     ["TypeError: fetch failed (ECONNRESET)", "error_network"],
     ["что-то пошло не так", "error_other"],
+    ["CredentialsError", "error_auth"],
   ];
   for (const [text, expected] of cases) assert.equal(toolOutcome(errorResult(text)), expected, text);
 });
@@ -324,6 +327,9 @@ test("with telemetry off the result is not inspected at all", async () => {
 // --- error excerpt (same cases as the Ask Ads gateway's _error_detail) ----------
 
 const DETAIL_CASES: [string, string, string[]][] = [
+  ["Ошибка: HTTP 429: [8] Quota exceeded for folder b1gabcdefghijklmnopq", "HTTP 429; code=8 Quota exceeded for folder #", ["b1gabc"]],
+  ["Ошибка: HTTP 400: [3] Invalid region id 999", "HTTP 400; code=3 Invalid region id 999", []],
+  ["HTTP 400: [3]", "HTTP 400; code=3", []],
   [
     "Ошибка: [53] Authorization error: Invalid OAuth token for boss@yandex.ru (request_id: 1234567890)",
     "code=53 Authorization error: Invalid OAuth token for #",
@@ -569,6 +575,7 @@ test("errorDetail masks bare tokens and stays fast on huge echoed input", () => 
   }
   const started = Date.now();
   errorDetail("HTTP 400: " + "a".repeat(200_000) + "@x");
+  errorDetail("HTTP 400: [3] " + "a".repeat(200_000));
   errorDetail("x".repeat(200_000));
   assert.ok(Date.now() - started < 200, "regexes must not go quadratic");
 });
@@ -623,6 +630,36 @@ test("our own error class without an allowlisted fragment sends its class name o
   assert.equal(down.body.reason, "error_upstream");
   assert.equal(down.body.error_detail, "DirectUnavailableError");
   assert.ok(!JSON.stringify(sent).includes("Иван") && !JSON.stringify(sent).includes("SummerSale"));
+});
+
+test("a Search API error keeps its API code and message", async () => {
+  const { mcp, sent } = await pairWith((server) =>
+    server.registerTool("api", { description: "a", inputSchema: {} }, async () =>
+      fail(new WordstatError(400, { code: 3, message: "Invalid region id 999" })),
+    ),
+  );
+  await mcp.callTool({ name: "api", arguments: {} });
+  const call = sent.find((s) => s.body.event === "tool_call")!;
+  assert.equal(call.body.reason, "error_invalid_request");
+  assert.equal(call.body.error_detail, "HTTP 400; code=3 Invalid region id 999");
+});
+
+test("missing credentials (CredentialsError) arrive as error_auth with the class name only", async () => {
+  const { mcp, sent } = await pairWith((server) =>
+    server.registerTool("unconfigured", { description: "u", inputSchema: {} }, async () => {
+      try {
+        return { content: [{ type: "text" as const, text: JSON.stringify(await new WordstatClient({ apiBase: "https://x", lang: "ru" }).regionsTree()) }] };
+      } catch (e) {
+        return fail(e);
+      }
+    }),
+  );
+  const res = await mcp.callTool({ name: "unconfigured", arguments: {} });
+  assert.match(JSON.stringify(res), /WORDSTAT_API_KEY/, "the model still reads which variable to set");
+  const call = sent.find((s) => s.body.event === "tool_call")!;
+  assert.equal(call.body.reason, "error_auth");
+  assert.equal(call.body.error_detail, "CredentialsError");
+  assert.ok(!JSON.stringify(sent).includes("WORDSTAT_API_KEY"));
 });
 
 test("a plain Error or a system error with user data sends no text at all", async () => {
