@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [2.5.0] — 2026-11-18
+
 ### Изменено
 
 - `dynamics`: `period` и `fromDate` стали обязательными. Search API не принимает запрос без них
@@ -212,7 +214,8 @@
 - Ретраи на 429/5xx с бэкоффом (учёт `Retry-After`), таймаут запроса,
   `WordstatError(status, body)`.
 
-[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.4...HEAD
+[Unreleased]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.4...v2.5.0
 [2.4.4]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.3...v2.4.4
 [2.4.3]: https://github.com/askads/mcp-yandex-wordstat/compare/v2.4.2...v2.4.3
 [2.4.2]: https://github.com/askads/mcp-yandex-wordstat/releases/tag/v2.4.2
