@@ -50,15 +50,20 @@ export function registerWordstatTools(server: McpServer, client: WordstatClient)
       title: "Динамика спроса во времени",
       annotations: READ_ONLY,
       description:
-        "Возвращает, как менялся спрос на фразу во времени, — ряд {date, count, share}, где share — доля от всех поисковых запросов Яндекса. Подходит для оценки сезонности и тренда. period задаёт шаг ряда (daily/weekly/monthly). fromDate/toDate ограничивают диапазон метками времени RFC3339, при этом toDate должен попадать на границу периода.",
+        "Возвращает, как менялся спрос на фразу во времени, — ряд {date, count, share}, где share — доля от всех поисковых запросов Яндекса. Подходит для оценки сезонности и тренда. period задаёт шаг ряда (daily/weekly/monthly); period и fromDate обязательны, значений по умолчанию у API нет. fromDate/toDate — метки времени RFC3339. Границы диапазона API сверяет по UTC и требует выравнивать по шагу: monthly — fromDate первое число месяца, toDate последний день месяца; weekly — fromDate понедельник, toDate воскресенье; daily — любые дни, но fromDate не старше 60 дней. Без toDate ряд идёт до последних доступных данных.",
       inputSchema: {
         phrase: z.string().min(1).describe("Поисковая фраза для анализа."),
         period: z
           .enum(["daily", "weekly", "monthly"])
+          .describe("Шаг ряда: daily, weekly или monthly. От него зависит, какими должны быть fromDate и toDate."),
+        fromDate: rfc3339Date().describe(
+          "Начало диапазона (RFC3339, дата сверяется по UTC), например 2026-01-01T00:00:00Z. Для monthly — первое число месяца, для weekly — понедельник, для daily — не старше 60 дней.",
+        ),
+        toDate: rfc3339Date()
           .optional()
-          .describe("Шаг ряда. По умолчанию monthly."),
-        fromDate: rfc3339Date().optional().describe("Начало диапазона (RFC3339), например 2026-01-01T00:00:00Z."),
-        toDate: rfc3339Date().optional().describe("Конец диапазона (RFC3339), выровненный по границе периода."),
+          .describe(
+            "Конец диапазона (RFC3339, дата сверяется по UTC), например 2026-03-31T00:00:00Z. Для monthly — последний день месяца, для weekly — воскресенье, для daily — любой день. Без параметра — до последних доступных данных.",
+          ),
         regionIds,
         devices,
       },
