@@ -123,7 +123,7 @@ const STEPS = [
       phrase: "купить велосипед",
       period: "monthly",
       fromDate: "2025-07-01T00:00:00Z",
-      toDate: "2026-07-01T00:00:00Z",
+      toDate: "2026-06-30T00:00:00Z",
     },
     spin: 1200,
     label: "Wordstat: dynamics — 12 месяцев",
